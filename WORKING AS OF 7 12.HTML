@@ -1071,7 +1071,8 @@ jQuery(document).ready(function($) {
                         
                         // Use data attribute to store the full feature name to avoid HTML escaping issues
                         // Escape HTML entities for safe attribute values
-                        var escapedFeature = feature.replace(/"/g, '&quot;');
+                        var escapedFeature = feature;
+                        escapedFeature = escapedFeature.replace(/"/g, '&quot;');
                         escapedFeature = escapedFeature.replace(/'/g, '&#39;');
                         
                         html += '<div class="gchoice gchoice_terrain_' + globalIndex + '">\
