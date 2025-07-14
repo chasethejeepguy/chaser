@@ -926,6 +926,9 @@ jQuery(document).ready(function($) {
      */
 	function populateTerrainFeatures() {
     console.log('=== populateTerrainFeatures called ===');
+    console.log('Current terrainPopulated flag:', terrainPopulated);
+    console.log('Form ID:', formId);
+    console.log('terrainHtmlBlockFieldId:', terrainHtmlBlockFieldId);
     
     if (terrainPopulated) {
         console.log('Terrain features already populated, skipping');
@@ -935,22 +938,37 @@ jQuery(document).ready(function($) {
     var config = modelConfigs['TERRAIN'];
     if (!config) {
         console.warn('Terrain configuration not found');
+        console.log('Available modelConfigs:', Object.keys(modelConfigs));
         return;
     }
+    console.log('Terrain config found:', config);
 
     // Try multiple selectors to find the HTML block field
+    console.log('Searching for HTML block field with multiple selectors...');
     var htmlBlock = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
+    console.log('Selector 1 (#field_' + formId + '_' + terrainHtmlBlockFieldId + '):', htmlBlock.length);
+    
     if (!htmlBlock.length) {
         htmlBlock = $('#field_' + formId + '_137');
+        console.log('Selector 2 (#field_' + formId + '_137):', htmlBlock.length);
     }
     if (!htmlBlock.length) {
         htmlBlock = $('#input_' + formId + '_137');
+        console.log('Selector 3 (#input_' + formId + '_137):', htmlBlock.length);
     }
     if (!htmlBlock.length) {
         htmlBlock = $('[id*="137"]').filter(function() {
             return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
         });
+        console.log('Selector 4 (wildcard [id*="137"]):', htmlBlock.length);
     }
+    
+    // Log all elements with 137 in ID
+    var all137Elements = $('[id*="137"]');
+    console.log('All elements with 137 in ID:');
+    all137Elements.each(function(i) {
+        console.log('  ' + i + ': ' + this.id + ' (tag: ' + this.tagName + ', class: ' + $(this).attr('class') + ')');
+    });
     
     console.log('HTML Block field (ID: 137) debug:', {
         selector: '#field_' + formId + '_' + terrainHtmlBlockFieldId,
@@ -966,47 +984,67 @@ jQuery(document).ready(function($) {
         console.log('All form fields:', $('#gform_fields_' + formId).find('.gfield').map(function() { 
             return { id: $(this).attr('id'), class: $(this).attr('class') }; 
         }).get());
+        
+        // Try to find any HTML block field
+        var allHtmlFields = $('[id*="field"][id*="' + formId + '"]').filter(function() {
+            return $(this).find('.gfield_html').length > 0 || $(this).hasClass('gfield_html');
+        });
+        console.log('All HTML block fields found:', allHtmlFields.map(function() { return this.id; }).get());
         return;
     }
 
     console.log('Fetching terrain CSV from:', config.csvUrl);
     fetchCsvWithRetry(config.csvUrl, 'Terrain', 3, 1000).then(function(csvText) {
         console.log('Terrain CSV fetched successfully, length:', csvText.length);
+        console.log('CSV preview (first 500 chars):', csvText.substring(0, 500));
+        
         Papa.parse(csvText, {
             skipEmptyLines: true,
             complete: function(results) {
                 console.log('Terrain CSV parsed for population, rows: ' + results.data.length);
+                console.log('First few rows:', results.data.slice(0, 3));
+                
                 var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
                 var featureGroups = {};
                 var currentCategory = null;
                 var features = [];
 
-                results.data.forEach(function(row) {
+                results.data.forEach(function(row, rowIndex) {
                     if (row.length > 0) {
                         var firstCell = row[0] ? row[0].trim() : '';
                         if (firstCell.startsWith('TRIM LEVELS FOR {')) {
                             if (currentCategory && features.length > 0) {
                                 featureGroups[currentCategory] = features;
+                                console.log('Stored category: ' + currentCategory + ' with ' + features.length + ' features');
                             }
                             currentCategory = firstCell.match(/\{(.+)\}/)[1];
                             features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; });
-                            console.log('Parsed category: ' + currentCategory + ', features: ' + features.length);
+                            console.log('Row ' + rowIndex + ': Parsed category: ' + currentCategory + ', features: ' + features.length);
+                            console.log('Features for ' + currentCategory + ':', features.slice(0, 5)); // Show first 5 features
                         }
                     }
                 });
                 if (currentCategory && features.length > 0) {
                     featureGroups[currentCategory] = features;
+                    console.log('Final stored category: ' + currentCategory + ' with ' + features.length + ' features');
                 }
+
+                console.log('Feature groups summary:', Object.keys(featureGroups).map(function(cat) {
+                    return cat + ': ' + featureGroups[cat].length + ' features';
+                }));
 
                 if (Object.keys(featureGroups).length !== 5) {
                     console.error('Expected 5 categories, found: ' + Object.keys(featureGroups).length);
+                    console.error('Found categories:', Object.keys(featureGroups));
                     return;
                 }
 
+                console.log('Building HTML for terrain features...');
                 var html = '<div class="feature-groups">';
                 var globalIndex = 0;
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
+                    console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
                     html += '<div class="feature-column"><h4>' + category + '</h4><ul class="gfield_checkbox">';
                     catFeatures.forEach(function(feature, index) {
                         var uniqueId = 'choice_3_terrain_' + globalIndex;
@@ -1020,31 +1058,46 @@ jQuery(document).ready(function($) {
                     html += '</ul></div>';
                 });
                 html += '</div>';
+                
+                console.log('Generated HTML length:', html.length);
+                console.log('Generated HTML preview:', html.substring(0, 300));
+                console.log('Total checkboxes to create:', globalIndex);
 
                 // Replace {terrain feature checkboxes} placeholder in field 137
                 var htmlContent = htmlBlock.html();
-                console.log('HTML Block content before replacement:', htmlContent);
+                console.log('HTML Block content before replacement (length: ' + htmlContent.length + '):', htmlContent);
                 console.log('Looking for placeholder: {terrain feature checkboxes}');
                 console.log('Placeholder found:', htmlContent.indexOf('{terrain feature checkboxes}') !== -1);
                 
                 if (htmlContent.indexOf('{terrain feature checkboxes}') !== -1) {
                     htmlContent = htmlContent.replace('{terrain feature checkboxes}', html);
                     htmlBlock.html(htmlContent);
-                    console.log('Replaced {terrain feature checkboxes} placeholder in field 137');
+                    console.log('✓ Replaced {terrain feature checkboxes} placeholder in field 137');
                 } else {
                     // If no placeholder found, try to find a suitable container or append to the field
                     var targetContainer = htmlBlock.find('.ginput_container, .gfield_html_formatted').first();
                     if (targetContainer.length) {
                         targetContainer.html(html);
-                        console.log('Replaced content in container within field 137');
+                        console.log('✓ Replaced content in container within field 137');
                     } else {
                         htmlBlock.html(html);
-                        console.log('Replaced entire content of field 137 (no placeholder or container found)');
+                        console.log('✓ Replaced entire content of field 137 (no placeholder or container found)');
                     }
                 }
                 
-                console.log('HTML Block content after replacement:', htmlBlock.html().substring(0, 300));
-                console.log('Checkboxes created:', htmlBlock.find('input[type="checkbox"]').length);
+                console.log('HTML Block content after replacement (length: ' + htmlBlock.html().length + '):', htmlBlock.html().substring(0, 300));
+                var createdCheckboxes = htmlBlock.find('input[type="checkbox"]');
+                console.log('✓ Checkboxes created:', createdCheckboxes.length);
+                
+                // Log first few checkboxes for verification
+                createdCheckboxes.slice(0, 3).each(function(i) {
+                    console.log('Checkbox ' + i + ':', {
+                        id: $(this).attr('id'),
+                        name: $(this).attr('name'),
+                        value: $(this).attr('value'),
+                        category: $(this).attr('data-category')
+                    });
+                });
 
                 terrainPopulated = true;
                 console.log('Terrain features populated into 5 columns in field 137');
@@ -1913,9 +1966,18 @@ function initFormBindings() {
                             updateAppointmentConfirmationField();
                             // Check for GMC model selection (radio buttons)
                             if (input.is('input[type="radio"]') && input.attr('id') && input.attr('id').indexOf('choice_' + formId + '_' + gmcModelFieldId) !== -1) {
+                                console.log('🎯 GMC model radio button detected:', {
+                                    id: input.attr('id'),
+                                    value: input.val(),
+                                    checked: input.is(':checked'),
+                                    name: input.attr('name')
+                                });
                                 if (input.val() === 'TERRAIN' && input.is(':checked')) {
-                                    console.log('TERRAIN selected via radio button');
+                                    console.log('🚗 TERRAIN selected via radio button - calling populateTerrainFeatures');
+                                    console.log('Current time:', new Date().toISOString());
+                                    console.log('terrainPopulated before call:', terrainPopulated);
                                     populateTerrainFeatures();
+                                    console.log('terrainPopulated after call:', terrainPopulated);
                                     updateTrimLevels('TERRAIN');
                                 } else if (input.is(':checked')) {
                                     console.log('Non-TERRAIN GMC model selected: ' + input.val());
@@ -1956,9 +2018,18 @@ function initFormBindings() {
                     updateAppointmentConfirmationField();
                                          // Check for GMC model selection (radio buttons)
                      if ($(this).is('input[type="radio"]') && $(this).attr('id') && $(this).attr('id').indexOf('choice_' + formId + '_' + gmcModelFieldId) !== -1) {
+                         console.log('🎯 GMC model radio button detected (delegated):', {
+                             id: $(this).attr('id'),
+                             value: $(this).val(),
+                             checked: $(this).is(':checked'),
+                             name: $(this).attr('name')
+                         });
                          if ($(this).val() === 'TERRAIN' && $(this).is(':checked')) {
-                             console.log('TERRAIN selected via delegated radio button');
+                             console.log('🚗 TERRAIN selected via delegated radio button - calling populateTerrainFeatures');
+                             console.log('Current time:', new Date().toISOString());
+                             console.log('terrainPopulated before call:', terrainPopulated);
                              populateTerrainFeatures();
+                             console.log('terrainPopulated after call:', terrainPopulated);
                              updateTrimLevels('TERRAIN');
                          } else if ($(this).is(':checked')) {
                              console.log('Non-TERRAIN GMC model selected via delegated: ' + $(this).val());
@@ -4199,7 +4270,46 @@ window.forcePopulateTerrainFeatures = function() {
     populateTerrainFeatures();
 };
 
-console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures()');
+// Manual terrain creation function for debugging
+window.createTerrainCheckboxesManually = function() {
+    console.log('=== Manual Terrain Checkboxes Creation ===');
+    
+    // Find field 137 manually
+    var field137 = $('#field_3_137');
+    if (!field137.length) {
+        field137 = $('[id*="137"]').first();
+    }
+    
+    console.log('Field 137 found:', field137.length > 0);
+    console.log('Field 137 ID:', field137.attr('id'));
+    console.log('Field 137 content:', field137.html());
+    
+    if (field137.length > 0) {
+        // Create sample checkboxes manually
+        var sampleHtml = '<div class="feature-groups">' +
+            '<div class="feature-column"><h4>EXTERIOR</h4><ul class="gfield_checkbox">' +
+            '<li class="gchoice"><input type="checkbox" id="test_terrain_1" value="LED Headlights" data-category="EXTERIOR"><label for="test_terrain_1">LED Headlights</label></li>' +
+            '<li class="gchoice"><input type="checkbox" id="test_terrain_2" value="Fog Lights" data-category="EXTERIOR"><label for="test_terrain_2">Fog Lights</label></li>' +
+            '</ul></div>' +
+            '<div class="feature-column"><h4>INTERIOR</h4><ul class="gfield_checkbox">' +
+            '<li class="gchoice"><input type="checkbox" id="test_terrain_3" value="Heated Seats" data-category="INTERIOR"><label for="test_terrain_3">Heated Seats</label></li>' +
+            '</ul></div>' +
+            '</div>';
+        
+        field137.html(sampleHtml);
+        console.log('✓ Sample checkboxes created');
+        console.log('Checkboxes count:', field137.find('input[type="checkbox"]').length);
+        
+        // Add event listeners
+        field137.find('input[type="checkbox"]').on('change', function() {
+            console.log('Checkbox changed:', $(this).attr('value'), $(this).is(':checked'));
+        });
+    } else {
+        console.log('✗ Field 137 not found');
+    }
+};
+
+console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually()');
 
 });
 
