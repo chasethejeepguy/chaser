@@ -925,6 +925,8 @@ jQuery(document).ready(function($) {
      * Meets minimum line requirement.
      */
 	function populateTerrainFeatures() {
+    console.log('=== populateTerrainFeatures called ===');
+    
     if (terrainPopulated) {
         console.log('Terrain features already populated, skipping');
         return;
@@ -937,12 +939,21 @@ jQuery(document).ready(function($) {
     }
 
     var htmlBlock = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
+    console.log('HTML Block field (ID: 137) debug:', {
+        selector: '#field_' + formId + '_' + terrainHtmlBlockFieldId,
+        exists: htmlBlock.length > 0,
+        visible: htmlBlock.length ? htmlBlock.is(':visible') : false,
+        content: htmlBlock.length ? htmlBlock.html().substring(0, 200) : 'N/A'
+    });
+    
     if (!htmlBlock.length) {
         console.warn('Terrain HTML block field (ID: 137) not found');
         return;
     }
 
+    console.log('Fetching terrain CSV from:', config.csvUrl);
     fetchCsvWithRetry(config.csvUrl, 'Terrain', 3, 1000).then(function(csvText) {
+        console.log('Terrain CSV fetched successfully, length:', csvText.length);
         Papa.parse(csvText, {
             skipEmptyLines: true,
             complete: function(results) {
@@ -994,6 +1005,10 @@ jQuery(document).ready(function($) {
 
                 // Replace {terrain feature checkboxes} placeholder in field 137
                 var htmlContent = htmlBlock.html();
+                console.log('HTML Block content before replacement:', htmlContent);
+                console.log('Looking for placeholder: {terrain feature checkboxes}');
+                console.log('Placeholder found:', htmlContent.indexOf('{terrain feature checkboxes}') !== -1);
+                
                 if (htmlContent.indexOf('{terrain feature checkboxes}') !== -1) {
                     htmlContent = htmlContent.replace('{terrain feature checkboxes}', html);
                     htmlBlock.html(htmlContent);
@@ -1003,6 +1018,8 @@ jQuery(document).ready(function($) {
                     htmlBlock.append(html);
                     console.log('Appended terrain features to field 137 (no placeholder found)');
                 }
+                
+                console.log('HTML Block content after replacement:', htmlBlock.html().substring(0, 300));
 
                 terrainPopulated = true;
                 console.log('Terrain features populated into 5 columns in field 137');
@@ -1862,7 +1879,7 @@ function initFormBindings() {
                                                     if (input.attr('id') === 'input_' + formId + '_' + dateFieldId || input.is('input[type="radio"]') || input.attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
                             updateAppointmentConfirmationField();
                             // Check for GMC model selection (radio buttons)
-                            if (input.is('input[type="radio"]') && input.attr('name') && input.attr('name').indexOf('input_' + gmcModelFieldId) !== -1) {
+                            if (input.is('input[type="radio"]') && input.attr('id') && input.attr('id').indexOf('choice_' + formId + '_' + gmcModelFieldId) !== -1) {
                                 if (input.val() === 'TERRAIN' && input.is(':checked')) {
                                     console.log('TERRAIN selected via radio button');
                                     populateTerrainFeatures();
@@ -1905,7 +1922,7 @@ function initFormBindings() {
                                     if ($(this).attr('id') === 'input_' + formId + '_' + dateFieldId || $(this).is('input[type="radio"]') || $(this).attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
                     updateAppointmentConfirmationField();
                                          // Check for GMC model selection (radio buttons)
-                     if ($(this).is('input[type="radio"]') && $(this).attr('name') && $(this).attr('name').indexOf('input_' + gmcModelFieldId) !== -1) {
+                     if ($(this).is('input[type="radio"]') && $(this).attr('id') && $(this).attr('id').indexOf('choice_' + formId + '_' + gmcModelFieldId) !== -1) {
                          if ($(this).val() === 'TERRAIN' && $(this).is(':checked')) {
                              console.log('TERRAIN selected via delegated radio button');
                              populateTerrainFeatures();
@@ -2047,6 +2064,24 @@ function initFormBindings() {
         }
 
         initCustomerInfoBindings();
+
+        // Add specific listener for TERRAIN radio button
+        $(document).on('change', '#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"]', function() {
+            console.log('GMC model radio button changed:', {
+                id: $(this).attr('id'),
+                value: $(this).val(),
+                checked: $(this).is(':checked')
+            });
+            
+            if ($(this).val() === 'TERRAIN' && $(this).is(':checked')) {
+                console.log('TERRAIN radio button detected, calling populateTerrainFeatures');
+                populateTerrainFeatures();
+                updateTrimLevels('TERRAIN');
+            } else if ($(this).is(':checked')) {
+                console.log('Non-TERRAIN GMC model selected, resetting terrain');
+                terrainPopulated = false;
+            }
+        });
 
         $(document).off('gform_post_render').on('gform_post_render', function(event, form_id) {
             if (parseInt(form_id) === parseInt(formId)) {
@@ -4058,6 +4093,23 @@ form.on('submit', function(e) {
         newData: serviceData.new
     });
 });
+
+// Test function for debugging
+window.testTerrainDebug = function() {
+    console.log('=== Manual Terrain Debug Test ===');
+    console.log('terrainPopulated:', terrainPopulated);
+    console.log('modelConfigs.TERRAIN:', modelConfigs['TERRAIN']);
+    console.log('HTML Block field exists:', $('#field_' + formId + '_' + terrainHtmlBlockFieldId).length > 0);
+    
+    if (typeof populateTerrainFeatures === 'function') {
+        console.log('Calling populateTerrainFeatures...');
+        populateTerrainFeatures();
+    } else {
+        console.log('populateTerrainFeatures function not found');
+    }
+};
+
+console.log('Debug function available: testTerrainDebug()');
 
 });
 

@@ -5,6 +5,11 @@ console.log('=== GMC Terrain Debug Script ===');
 var formId = 3;
 var gmcModelFieldId = 107;
 
+// Test the selector patterns
+console.log('Testing selector patterns:');
+console.log('Field selector: #field_' + formId + '_' + gmcModelFieldId);
+console.log('Radio button pattern: choice_' + formId + '_' + gmcModelFieldId);
+
 // Check if field exists
 var gmcModelField = $('#field_' + formId + '_' + gmcModelFieldId);
 console.log('GMC Model Field (ID: 107) exists:', gmcModelField.length > 0);
@@ -76,4 +81,18 @@ if (trimBlock.length) {
     console.log('Has TRIM LEVELS placeholder:', hasPlaceholder);
 }
 
+// Manual test function
+window.testTerrainFeatures = function() {
+    console.log('=== Manual Terrain Test ===');
+    
+    // Check if populateTerrainFeatures function exists
+    if (typeof populateTerrainFeatures === 'function') {
+        console.log('populateTerrainFeatures function exists, calling it...');
+        populateTerrainFeatures();
+    } else {
+        console.log('populateTerrainFeatures function not found');
+    }
+};
+
 console.log('=== End Debug Script ===');
+console.log('To manually test terrain features, run: testTerrainFeatures()');
