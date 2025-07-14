@@ -1069,11 +1069,11 @@ jQuery(document).ready(function($) {
                             inputName: inputName
                         });
                         
-                        // Escape quotes in the value attribute
-                        var escapedFeature = feature.replace(/"/g, '&quot;');
+                        // Use data attribute to store the full feature name to avoid HTML escaping issues
+                        var escapedFeature = feature.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
                         
                         html += '<div class="gchoice gchoice_terrain_' + globalIndex + '">\
-                            <input name="' + inputName + '" type="checkbox" value="' + escapedFeature + '" id="' + uniqueId + '" data-category="' + category + '">\
+                            <input name="' + inputName + '" type="checkbox" value="' + escapedFeature + '" data-feature="' + escapedFeature + '" id="' + uniqueId + '" data-category="' + category + '">\
                             <label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>\
                         </div>';
                         globalIndex++;
@@ -1454,7 +1454,18 @@ jQuery(document).ready(function($) {
 						});
 					}
 					
-					showTrimLevelsPopup(detailsHtml);
+					// Create a simple popup to show the details
+					var popup = $('<div id="trimLevelsPopup" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border: 2px solid #333; z-index: 10000; max-width: 80%; max-height: 80%; overflow-y: auto;"></div>');
+					var overlay = $('<div id="trimLevelsOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;"></div>');
+					
+					popup.html(detailsHtml + '<br><button type="button" onclick="$(\'#trimLevelsPopup, #trimLevelsOverlay\').remove();" style="margin-top: 10px;">Close</button>');
+					
+					$('body').append(overlay, popup);
+					
+					// Close popup when clicking overlay
+					overlay.on('click', function() {
+						$('#trimLevelsPopup, #trimLevelsOverlay').remove();
+					});
 				} else {
 					alert('No trim levels match your selected features. Please adjust your selections.');
 				}
@@ -1653,14 +1664,15 @@ jQuery(document).ready(function($) {
         var feature = '';
         
         if (model === 'TERRAIN') {
-            // For TERRAIN, get feature from value attribute
-            feature = $input.attr('value') || '';
+            // For TERRAIN, get feature from value attribute or data-feature attribute
+            feature = $input.attr('data-feature') || $input.attr('value') || '';
             // Unescape HTML entities in the value
-            feature = feature.replace(/&quot;/g, '"');
+            feature = feature.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
             
             console.log('TERRAIN checkbox debug:', {
                 id: $input.attr('id'),
                 rawValue: $input.attr('value'),
+                dataFeature: $input.attr('data-feature'),
                 unescapedValue: feature,
                 valueLength: feature.length,
                 name: $input.attr('name'),
@@ -2942,7 +2954,18 @@ function initFormBindings() {
             trimLevels: trimLevels,
             modelFilter: modelFilter
         });
-        alert('Error: No trim levels available for ' + model + '. Please select some features first.');
+        
+        // Extract just the model name if trimLevels contains HTML
+        var modelName = model;
+        if (typeof trimLevels === 'string' && trimLevels.includes('<')) {
+            // Extract model name from HTML content
+            var modelMatch = trimLevels.match(/Available Trim Levels for (\w+)/);
+            if (modelMatch) {
+                modelName = modelMatch[1];
+            }
+        }
+        
+        alert('Error: No trim levels available for ' + modelName + '. Please select some features first.');
         return;
     }
     
