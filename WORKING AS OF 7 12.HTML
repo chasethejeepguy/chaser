@@ -1198,7 +1198,10 @@ jQuery(document).ready(function($) {
 		var matchingTrimLevels = [];
 		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
 		var featureToColumnMap = {};
+		var featureToCategoryMap = {};
 		var trimLevelRows = {};
+		var trimLevelRowsByCategory = {};
+		var currentCategory = null;
 		
 		// Parse the CSV data to map features to columns and find trim level rows
 		csvData.forEach(function(row, rowIndex) {
@@ -1208,7 +1211,13 @@ jQuery(document).ready(function($) {
 				// Check if this is a category header row
 				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
 					var category = firstCell.match(/\{(.+)\}/)[1];
+					currentCategory = category;
 					console.log('Found category:', category);
+					
+					// Initialize category storage if not exists
+					if (!trimLevelRowsByCategory[category]) {
+						trimLevelRowsByCategory[category] = {};
+					}
 					
 					// Map features to their column indices
 					for (var i = 1; i < row.length; i++) {
@@ -1222,14 +1231,17 @@ jQuery(document).ready(function($) {
 							cleanedFeature = cleanedFeature.replace(/""/g, '"');
 							
 							featureToColumnMap[cleanedFeature] = i;
-							console.log('Mapped feature "' + cleanedFeature + '" (raw: "' + feature + '") to column ' + i);
+							featureToCategoryMap[cleanedFeature] = category;
+							console.log('Mapped feature "' + cleanedFeature + '" (raw: "' + feature + '") to column ' + i + ' in category ' + category);
 						}
 					}
 				}
 				// Check if this is a trim level row
-				else if (trimLevels.includes(firstCell)) {
+				else if (trimLevels.includes(firstCell) && currentCategory) {
+					// Store in both global and category-specific storage
 					trimLevelRows[firstCell] = row;
-					console.log('Found trim level row for:', firstCell);
+					trimLevelRowsByCategory[currentCategory][firstCell] = row;
+					console.log('Found trim level row for:', firstCell, 'in category:', currentCategory);
 					
 					// Debug specific trim level data for SAFETY section
 					if (currentCategory === 'SAFETY') {
@@ -1246,7 +1258,9 @@ jQuery(document).ready(function($) {
 		});
 		
 		console.log('Feature to column mapping:', featureToColumnMap);
+		console.log('Feature to category mapping:', featureToCategoryMap);
 		console.log('Trim level rows:', Object.keys(trimLevelRows));
+		console.log('Trim level rows by category:', trimLevelRowsByCategory);
 		
 		// Check which trim levels have all selected features
 		trimLevels.forEach(function(trimLevel) {
@@ -1315,7 +1329,19 @@ jQuery(document).ready(function($) {
 					}
 					
 					if (columnIndex !== undefined) {
-						var value = trimLevelRows[trimLevel][columnIndex];
+						// Get the category for this feature
+						var featureCategory = featureToCategoryMap[matchedFeature];
+						var value = null;
+						
+						// Use category-specific trim level data if available
+						if (featureCategory && trimLevelRowsByCategory[featureCategory] && trimLevelRowsByCategory[featureCategory][trimLevel]) {
+							value = trimLevelRowsByCategory[featureCategory][trimLevel][columnIndex];
+							console.log('Using category-specific data for ' + trimLevel + ' in category ' + featureCategory + ', column ' + columnIndex + ': "' + value + '"');
+						} else {
+							// Fallback to global trim level data
+							value = trimLevelRows[trimLevel][columnIndex];
+							console.log('Using global data for ' + trimLevel + ', column ' + columnIndex + ': "' + value + '"');
+						}
 						// Clean up the value and check for YES (handle edge cases like "YNO" -> "NO")
 						var cleanedValue = value ? value.trim().toLowerCase() : '';
 						var hasFeature = false;
