@@ -4379,6 +4379,23 @@ window.checkTerrainState = function() {
 
 console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually(), checkTerrainState()');
 
+// GLOBAL RADIO BUTTON LISTENER FOR DEBUGGING
+$(document).on('change', 'input[type="radio"]', function() {
+    console.log('🔍 GLOBAL RADIO CHANGE DETECTED:');
+    console.log('  - ID:', $(this).attr('id'));
+    console.log('  - Name:', $(this).attr('name'));
+    console.log('  - Value:', $(this).val());
+    console.log('  - Checked:', $(this).is(':checked'));
+    console.log('  - Expected GMC field pattern:', 'choice_' + formId + '_' + gmcModelFieldId);
+    console.log('  - Matches pattern:', $(this).attr('id') && $(this).attr('id').indexOf('choice_' + formId + '_' + gmcModelFieldId) !== -1);
+    
+    if ($(this).val() === 'TERRAIN' && $(this).is(':checked')) {
+        console.log('🚨 TERRAIN DETECTED IN GLOBAL LISTENER - FORCING POPULATE');
+        terrainPopulated = false;
+        populateTerrainFeatures();
+    }
+});
+
 });
 
 // Comments for Part 5/5
