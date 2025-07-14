@@ -1059,35 +1059,62 @@ jQuery(document).ready(function($) {
                 });
                 html += '</div>';
                 
-                console.log('Generated HTML length:', html.length);
-                console.log('Generated HTML preview:', html.substring(0, 300));
-                console.log('Total checkboxes to create:', globalIndex);
+                console.log('🔨 Generated HTML length:', html.length);
+                console.log('🔨 Generated HTML preview:', html.substring(0, 300));
+                console.log('🔨 Total checkboxes to create:', globalIndex);
+
+                // COMPREHENSIVE DEBUG: Check HTML block state
+                console.log('🔍 HTML BLOCK DEBUG BEFORE REPLACEMENT:');
+                console.log('  - HTML Block exists:', htmlBlock.length > 0);
+                console.log('  - HTML Block ID:', htmlBlock.attr('id'));
+                console.log('  - HTML Block visible:', htmlBlock.is(':visible'));
+                console.log('  - HTML Block parent visible:', htmlBlock.parent().is(':visible'));
+                console.log('  - HTML Block display style:', htmlBlock.css('display'));
+                console.log('  - HTML Block current content length:', htmlBlock.html().length);
 
                 // Replace {terrain feature checkboxes} placeholder in field 137
                 var htmlContent = htmlBlock.html();
-                console.log('HTML Block content before replacement (length: ' + htmlContent.length + '):', htmlContent);
-                console.log('Looking for placeholder: {terrain feature checkboxes}');
-                console.log('Placeholder found:', htmlContent.indexOf('{terrain feature checkboxes}') !== -1);
+                console.log('📝 HTML Block content before replacement (length: ' + htmlContent.length + '):', htmlContent);
+                console.log('🔍 Looking for placeholder: {terrain feature checkboxes}');
+                console.log('🔍 Placeholder found:', htmlContent.indexOf('{terrain feature checkboxes}') !== -1);
                 
+                // FORCE REPLACEMENT REGARDLESS OF PLACEHOLDER
+                console.log('🔧 FORCING HTML REPLACEMENT...');
                 if (htmlContent.indexOf('{terrain feature checkboxes}') !== -1) {
                     htmlContent = htmlContent.replace('{terrain feature checkboxes}', html);
                     htmlBlock.html(htmlContent);
-                    console.log('✓ Replaced {terrain feature checkboxes} placeholder in field 137');
+                    console.log('✅ Replaced {terrain feature checkboxes} placeholder in field 137');
                 } else {
-                    // If no placeholder found, try to find a suitable container or append to the field
+                    // If no placeholder found, try to find a suitable container or replace entire content
                     var targetContainer = htmlBlock.find('.ginput_container, .gfield_html_formatted').first();
                     if (targetContainer.length) {
+                        console.log('🎯 Found container, replacing its content');
                         targetContainer.html(html);
-                        console.log('✓ Replaced content in container within field 137');
+                        console.log('✅ Replaced content in container within field 137');
                     } else {
+                        console.log('⚠️ No container found, replacing entire HTML block content');
                         htmlBlock.html(html);
-                        console.log('✓ Replaced entire content of field 137 (no placeholder or container found)');
+                        console.log('✅ Replaced entire content of field 137 (no placeholder or container found)');
                     }
                 }
                 
-                console.log('HTML Block content after replacement (length: ' + htmlBlock.html().length + '):', htmlBlock.html().substring(0, 300));
+                // COMPREHENSIVE DEBUG: Check HTML block state after replacement
+                console.log('🔍 HTML BLOCK DEBUG AFTER REPLACEMENT:');
+                console.log('  - HTML Block content length after replacement:', htmlBlock.html().length);
+                console.log('  - HTML Block content preview:', htmlBlock.html().substring(0, 300));
+                
+                // FORCE CHECK FOR CHECKBOXES
+                console.log('🔍 SEARCHING FOR CREATED CHECKBOXES...');
                 var createdCheckboxes = htmlBlock.find('input[type="checkbox"]');
-                console.log('✓ Checkboxes created:', createdCheckboxes.length);
+                console.log('✅ Checkboxes found in HTML block:', createdCheckboxes.length);
+                
+                // Also check in the entire document
+                var allTerrainCheckboxes = $('input[type="checkbox"][id*="terrain"]');
+                console.log('✅ All terrain checkboxes in document:', allTerrainCheckboxes.length);
+                
+                // Check for checkboxes with data-category attribute
+                var categoryCheckboxes = $('input[type="checkbox"][data-category]');
+                console.log('✅ Checkboxes with data-category:', categoryCheckboxes.length);
                 
                 // Log first few checkboxes for verification
                 createdCheckboxes.slice(0, 3).each(function(i) {
@@ -4274,42 +4301,83 @@ window.forcePopulateTerrainFeatures = function() {
 window.createTerrainCheckboxesManually = function() {
     console.log('=== Manual Terrain Checkboxes Creation ===');
     
-    // Find field 137 manually
-    var field137 = $('#field_3_137');
-    if (!field137.length) {
-        field137 = $('[id*="137"]').first();
+    // Find field 137 manually using multiple methods
+    var field137 = null;
+    var selectors = [
+        '#field_3_137',
+        '[id*="field"][id*="137"]',
+        '[id*="137"]'
+    ];
+    
+    for (var i = 0; i < selectors.length; i++) {
+        field137 = $(selectors[i]);
+        if (field137.length > 0) {
+            console.log('✅ Found field 137 using selector:', selectors[i]);
+            break;
+        }
     }
     
-    console.log('Field 137 found:', field137.length > 0);
-    console.log('Field 137 ID:', field137.attr('id'));
-    console.log('Field 137 content:', field137.html());
-    
-    if (field137.length > 0) {
-        // Create sample checkboxes manually
-        var sampleHtml = '<div class="feature-groups">' +
-            '<div class="feature-column"><h4>EXTERIOR</h4><ul class="gfield_checkbox">' +
-            '<li class="gchoice"><input type="checkbox" id="test_terrain_1" value="LED Headlights" data-category="EXTERIOR"><label for="test_terrain_1">LED Headlights</label></li>' +
-            '<li class="gchoice"><input type="checkbox" id="test_terrain_2" value="Fog Lights" data-category="EXTERIOR"><label for="test_terrain_2">Fog Lights</label></li>' +
-            '</ul></div>' +
-            '<div class="feature-column"><h4>INTERIOR</h4><ul class="gfield_checkbox">' +
-            '<li class="gchoice"><input type="checkbox" id="test_terrain_3" value="Heated Seats" data-category="INTERIOR"><label for="test_terrain_3">Heated Seats</label></li>' +
-            '</ul></div>' +
-            '</div>';
-        
-        field137.html(sampleHtml);
-        console.log('✓ Sample checkboxes created');
-        console.log('Checkboxes count:', field137.find('input[type="checkbox"]').length);
-        
-        // Add event listeners
-        field137.find('input[type="checkbox"]').on('change', function() {
-            console.log('Checkbox changed:', $(this).attr('value'), $(this).is(':checked'));
-        });
-    } else {
-        console.log('✗ Field 137 not found');
+    if (!field137 || field137.length === 0) {
+        console.log('❌ Field 137 not found');
+        return;
     }
+    
+    console.log('📍 Field 137 found:', field137.length > 0);
+    console.log('📍 Field 137 ID:', field137.attr('id'));
+    console.log('📍 Field 137 visible:', field137.is(':visible'));
+    console.log('📍 Field 137 content length:', field137.html().length);
+    
+    // Create sample checkboxes manually
+    var sampleHtml = '<div class="feature-groups">' +
+        '<div class="feature-column"><h4>EXTERIOR</h4><ul class="gfield_checkbox">' +
+        '<li class="gchoice"><input type="checkbox" id="test_terrain_1" value="LED Headlights" data-category="EXTERIOR"><label for="test_terrain_1">LED Headlights</label></li>' +
+        '<li class="gchoice"><input type="checkbox" id="test_terrain_2" value="Fog Lights" data-category="EXTERIOR"><label for="test_terrain_2">Fog Lights</label></li>' +
+        '</ul></div>' +
+        '<div class="feature-column"><h4>INTERIOR</h4><ul class="gfield_checkbox">' +
+        '<li class="gchoice"><input type="checkbox" id="test_terrain_3" value="Heated Seats" data-category="INTERIOR"><label for="test_terrain_3">Heated Seats</label></li>' +
+        '</ul></div>' +
+        '</div>';
+    
+    field137.html(sampleHtml);
+    console.log('✅ Sample checkboxes created');
+    console.log('✅ Checkboxes count:', field137.find('input[type="checkbox"]').length);
+    
+    // Add event listeners
+    field137.find('input[type="checkbox"]').on('change', function() {
+        console.log('🔄 Checkbox changed:', $(this).attr('value'), $(this).is(':checked'));
+    });
+    
+    // Force populate real terrain features
+    console.log('🔧 Now forcing real terrain features...');
+    terrainPopulated = false;
+    populateTerrainFeatures();
 };
 
-console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually()');
+// Manual function to check current state
+window.checkTerrainState = function() {
+    console.log('=== Terrain State Check ===');
+    console.log('terrainPopulated:', terrainPopulated);
+    console.log('modelConfigs.TERRAIN:', modelConfigs['TERRAIN']);
+    
+    // Check for field 137
+    var field137 = $('#field_3_137');
+    console.log('Field 137 exists:', field137.length > 0);
+    if (field137.length > 0) {
+        console.log('Field 137 visible:', field137.is(':visible'));
+        console.log('Field 137 content length:', field137.html().length);
+        console.log('Field 137 checkboxes:', field137.find('input[type="checkbox"]').length);
+    }
+    
+    // Check for terrain checkboxes anywhere
+    var terrainCheckboxes = $('input[type="checkbox"][id*="terrain"]');
+    console.log('Terrain checkboxes in document:', terrainCheckboxes.length);
+    
+    // Check selected model
+    var selectedModel = $('input[name="input_3_107"]:checked').val();
+    console.log('Selected model:', selectedModel);
+};
+
+console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually(), checkTerrainState()');
 
 });
 
