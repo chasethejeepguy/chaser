@@ -1873,7 +1873,18 @@ jQuery(document).ready(function($) {
                         $('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
                             e.preventDefault();
                             console.log('View Trim Levels button clicked for ' + model);
-                            showTrimLevelsPopup(model, trimLevels, config.modelFilter);
+                            console.log('Trim levels being passed:', trimLevels);
+                            console.log('Model filter being passed:', config.modelFilter);
+                            
+                            // Ensure trimLevels is defined and is an array
+                            var safeTrimLevels = Array.isArray(trimLevels) ? trimLevels : [];
+                            if (safeTrimLevels.length === 0) {
+                                console.warn('No trim levels available for ' + model);
+                                alert('No trim levels available for ' + model + '. Please select some features first.');
+                                return;
+                            }
+                            
+                            showTrimLevelsPopup(model, safeTrimLevels, config.modelFilter);
                         });
                         console.log('View Trim Levels button initialized for ' + model);
                     } else {
@@ -2918,6 +2929,29 @@ function initFormBindings() {
 	function showTrimLevelsPopup(model, trimLevels, modelFilter) {
     $('#trimLevelsPopup, #trimLevelsOverlay').remove();
 
+    // Safety check for parameters
+    if (!model) {
+        console.error('showTrimLevelsPopup: model parameter is required');
+        alert('Error: Model information is missing. Please refresh the page and try again.');
+        return;
+    }
+    
+    if (!Array.isArray(trimLevels) || trimLevels.length === 0) {
+        console.error('showTrimLevelsPopup: trimLevels must be a non-empty array', {
+            model: model,
+            trimLevels: trimLevels,
+            modelFilter: modelFilter
+        });
+        alert('Error: No trim levels available for ' + model + '. Please select some features first.');
+        return;
+    }
+    
+    console.log('showTrimLevelsPopup called with:', {
+        model: model,
+        trimLevels: trimLevels,
+        modelFilter: modelFilter
+    });
+
     var csvUrl = 'https://hutchinsonautoteam.com/usedmacon/newfeed.csv';
     fetchCsvWithRetry(csvUrl, 'New Inventory Feed', 3, 1000).then(function(csvText) {
         Papa.parse(csvText, {
@@ -2938,6 +2972,13 @@ function initFormBindings() {
                 var filteredVehicles = results.data.filter(function(row) {
                     var series = row['Series'] ? row['Series'].trim() : '';
                     var vehicleModel = row['Model'] ? row['Model'].trim() : '';
+                    
+                    // Safety check for trimLevels
+                    if (!Array.isArray(trimLevels) || trimLevels.length === 0) {
+                        console.error('trimLevels is not a valid array in filter function:', trimLevels);
+                        return false;
+                    }
+                    
                     var matchesTrim = trimLevels.some(function(trim) {
                         return model === 'K4' ? trim.toUpperCase() === series.toUpperCase() : fuzzyMatch(trim, series, model, series);
                     });
