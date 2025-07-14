@@ -1305,13 +1305,35 @@ jQuery(document).ready(function($) {
 					
 					if (columnIndex !== undefined) {
 						var value = trimLevelRows[trimLevel][columnIndex];
-						var hasFeature = value && value.trim().toLowerCase() === 'yes';
+						// Clean up the value and check for YES (handle edge cases like "YNO" -> "NO")
+						var cleanedValue = value ? value.trim().toLowerCase() : '';
+						var hasFeature = false;
+						
+						if (cleanedValue === 'yes') {
+							hasFeature = true;
+						} else if (cleanedValue === 'no') {
+							hasFeature = false;
+						} else if (cleanedValue.startsWith('y') && cleanedValue.length <= 4) {
+							// Handle cases like "YNO" which should be "NO"
+							hasFeature = false;
+							console.warn('Found malformed value "' + value + '" for feature "' + matchedFeature + '" in trim level "' + trimLevel + '", treating as NO');
+						} else {
+							// Default to false for any other value
+							hasFeature = false;
+							if (cleanedValue !== '') {
+								console.warn('Unknown value "' + value + '" for feature "' + matchedFeature + '" in trim level "' + trimLevel + '", treating as NO');
+							}
+						}
+						
 						featureResults.push({
 							feature: feature,
 							matchedFeature: matchedFeature,
 							value: value,
+							cleanedValue: cleanedValue,
 							hasFeature: hasFeature
 						});
+						
+						console.log('Feature check for ' + trimLevel + ': "' + feature + '" -> "' + matchedFeature + '" = "' + value + '" (' + cleanedValue + ') -> ' + hasFeature);
 						
 						if (!hasFeature) {
 							hasAllFeatures = false;
@@ -1425,6 +1447,16 @@ jQuery(document).ready(function($) {
                 return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
             });
         }
+        
+        console.log('TERRAIN checkboxField debug:', {
+            terrainHtmlBlockFieldId: terrainHtmlBlockFieldId,
+            selector1: '#field_' + formId + '_' + terrainHtmlBlockFieldId,
+            selector2: '#field_' + formId + '_137',
+            found: checkboxField.length,
+            actualId: checkboxField.attr('id'),
+            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
+        });
+        
         htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
         trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
     } else {
@@ -1553,6 +1585,32 @@ jQuery(document).ready(function($) {
         return;
     }
 
+    // Debug checkbox field contents
+    console.log('=== CHECKBOX FIELD DEBUG ===');
+    console.log('Model:', model);
+    console.log('Checkbox field exists:', checkboxField.length > 0);
+    console.log('Checkbox field selector used:', checkboxField.selector || 'N/A');
+    console.log('Checkbox field HTML preview:', checkboxField.html() ? checkboxField.html().substring(0, 500) : 'N/A');
+    
+    var allCheckboxes = checkboxField.find('input[type="checkbox"]');
+    console.log('Total checkboxes found:', allCheckboxes.length);
+    
+    var checkedCheckboxes = checkboxField.find('input[type="checkbox"]:checked');
+    console.log('Checked checkboxes found:', checkedCheckboxes.length);
+    
+    // Debug all checkboxes
+    allCheckboxes.each(function(index) {
+        var $input = $(this);
+        console.log('Checkbox ' + index + ':', {
+            id: $input.attr('id'),
+            name: $input.attr('name'),
+            value: $input.attr('value') ? $input.attr('value').substring(0, 50) + '...' : 'N/A',
+            checked: $input.is(':checked'),
+            type: $input.attr('type'),
+            parentClass: $input.parent().attr('class')
+        });
+    });
+    
     var selectedFeatures = checkboxField.find('input[type="checkbox"]:checked').map(function() {
         var $input = $(this);
         var feature = '';
