@@ -1070,7 +1070,9 @@ jQuery(document).ready(function($) {
                         });
                         
                         // Use data attribute to store the full feature name to avoid HTML escaping issues
-                        var escapedFeature = feature.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                        // Escape HTML entities for safe attribute values
+                        var escapedFeature = feature.replace(/"/g, '&quot;');
+                        escapedFeature = escapedFeature.replace(/'/g, '&#39;');
                         
                         html += '<div class="gchoice gchoice_terrain_' + globalIndex + '">\
                             <input name="' + inputName + '" type="checkbox" value="' + escapedFeature + '" data-feature="' + escapedFeature + '" id="' + uniqueId + '" data-category="' + category + '">\
@@ -1667,7 +1669,9 @@ jQuery(document).ready(function($) {
             // For TERRAIN, get feature from value attribute or data-feature attribute
             feature = $input.attr('data-feature') || $input.attr('value') || '';
             // Unescape HTML entities in the value
-            feature = feature.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+            // Clean up HTML entities
+            feature = feature.replace(/&quot;/g, '"');
+            feature = feature.replace(/&#39;/g, "'");
             
             console.log('TERRAIN checkbox debug:', {
                 id: $input.attr('id'),
