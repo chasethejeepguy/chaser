@@ -616,6 +616,7 @@ jQuery(document).ready(function($) {
     var emailFieldId2 = 119;
     var gmcModelFieldId = 107;
     var terrainCheckboxFieldId = 129;
+    var terrainHtmlBlockFieldId = 137;
 
     // Global variables
     var vehicleData = null;
@@ -935,9 +936,9 @@ jQuery(document).ready(function($) {
         return;
     }
 
-    var checkboxField = $('#field_' + formId + '_' + config.fieldId);
-    if (!checkboxField.length) {
-        console.warn('Terrain checkbox field (ID: 129) not found');
+    var htmlBlock = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
+    if (!htmlBlock.length) {
+        console.warn('Terrain HTML block field (ID: 137) not found');
         return;
     }
 
@@ -974,31 +975,45 @@ jQuery(document).ready(function($) {
                 }
 
                 var html = '<div class="feature-groups">';
+                var globalIndex = 0;
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
                     html += '<div class="feature-column"><h4>' + category + '</h4><ul class="gfield_checkbox">';
                     catFeatures.forEach(function(feature, index) {
-                        var id = 'choice_3_129_' + (categories.indexOf(category) * 100 + index);
-                        html += '<li class="gchoice gchoice_3_129_' + index + '">\
-                            <input name="input_129.' + (index + 1) + '" type="checkbox" value="' + feature + '" id="' + id + '">\
-                            <label for="' + id + '" id="label_3_129_' + index + '">' + feature + '</label>\
+                        var uniqueId = 'choice_3_terrain_' + globalIndex;
+                        var inputName = 'input_terrain_' + globalIndex;
+                        html += '<li class="gchoice gchoice_terrain_' + globalIndex + '">\
+                            <input name="' + inputName + '" type="checkbox" value="' + feature + '" id="' + uniqueId + '" data-category="' + category + '">\
+                            <label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>\
                         </li>';
+                        globalIndex++;
                     });
                     html += '</ul></div>';
                 });
                 html += '</div>';
 
-                checkboxField.find('.ginput_container_checkbox').html(html);
+                // Replace {terrain feature checkboxes} placeholder in field 137
+                var htmlContent = htmlBlock.html();
+                if (htmlContent.indexOf('{terrain feature checkboxes}') !== -1) {
+                    htmlContent = htmlContent.replace('{terrain feature checkboxes}', html);
+                    htmlBlock.html(htmlContent);
+                    console.log('Replaced {terrain feature checkboxes} placeholder in field 137');
+                } else {
+                    // If no placeholder found, append to the field
+                    htmlBlock.append(html);
+                    console.log('Appended terrain features to field 137 (no placeholder found)');
+                }
+
                 terrainPopulated = true;
-                console.log('Terrain features populated into 5 columns');
+                console.log('Terrain features populated into 5 columns in field 137');
 
                 // Bind change events and add info icons
-                checkboxField.find('input[type="checkbox"]').off('change.TERRAINFeatures').on('change.TERRAINFeatures', function() {
+                htmlBlock.find('input[type="checkbox"]').off('change.TERRAINFeatures').on('change.TERRAINFeatures', function() {
                     console.log('TERRAIN checkbox changed, updating trim levels');
                     updateTrimLevels('TERRAIN');
                 });
 
-                checkboxField.find('.gchoice').each(function() {
+                htmlBlock.find('.gchoice').each(function() {
                     var $div = $(this);
                     var $input = $div.find('input[type="checkbox"]');
                     var $label = $div.find('label');
@@ -1014,7 +1029,7 @@ jQuery(document).ready(function($) {
                     }
                 });
 
-                checkboxField.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
+                htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     var feature = $(this).data('feature');
@@ -1037,14 +1052,25 @@ function updateTrimLevels(model) {
         console.warn('Model configuration not found for: ' + model);
         return;
     }
-    var checkboxField = $('#field_' + formId + '_' + config.fieldId);
-    var htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
-    var trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    var checkboxField, htmlBlock, trimLevelsButtonBlock;
+    
+    if (model === 'TERRAIN') {
+        // For TERRAIN, checkboxes are in field 137 (HTML block)
+        checkboxField = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    } else {
+        // For other models, checkboxes are in their respective fields
+        checkboxField = $('#field_' + formId + '_' + config.fieldId);
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    }
+    
     var defaultText = 'Wonderful, it sounds like the {TRIM LEVELS} would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
     var defaultButtonText = '<button id="viewTrimLevelsButton">View Trim Levels</button>';
     var noMatchText = 'No matching trim levels found. Please adjust your feature selections or contact support.';
 
-    console.log('Checking ' + model + ' checkbox field (ID: ' + config.fieldId + '):', {
+    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : config.fieldId) + '):', {
         fieldExists: checkboxField.length > 0,
         fieldVisible: checkboxField.is(':visible'),
         fieldClasses: checkboxField.attr('class'),
@@ -1054,37 +1080,69 @@ function updateTrimLevels(model) {
     });
 
     // Ensure feature info icons are prepended before feature labels
-    checkboxField.find('.gfield_checkbox > div, .gfield-choice-wrapper').each(function() {
-        var $div = $(this);
-        var $input = $div.find('input[type="checkbox"]');
-        var $label = $div.find('label, .gfield-choice-label');
-        var feature = '';
-        if ($label.length) {
-            feature = $label.contents().filter(function() {
-                return this.nodeType === 3; // Text nodes only, excludes .feature-info-icon
-            }).text().trim();
-        }
-        if (!feature || !$input.length) {
-            console.warn('Invalid checkbox structure in field (ID: ' + config.fieldId + ')', {
-                feature: feature,
-                inputExists: $input.length > 0,
-                labelExists: $label.length > 0,
-                divHtml: $div.html(),
-                inputId: $input.attr('id'),
-                labelClasses: $label.attr('class'),
-                parentClasses: $div.attr('class'),
-                parentHtml: $div.parent().html().substring(0, 500)
+    if (model === 'TERRAIN') {
+        // For TERRAIN, handle the different structure
+        checkboxField.find('.gchoice').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label');
+            var feature = $input.attr('value') || '';
+            
+            if (!feature || !$input.length) {
+                console.warn('Invalid TERRAIN checkbox structure in field (ID: ' + terrainHtmlBlockFieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class')
+                });
+                return;
+            }
+            
+            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
+                return fuzzyMatch(key, feature, model, feature);
             });
-            return;
-        }
-        var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
-            return model === 'K4' ? key.toUpperCase() === feature.toUpperCase() : fuzzyMatch(key, feature, model, feature);
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
+                console.log('Prepended info icon before TERRAIN feature: ' + feature + ', matched: ' + matchedFeature);
+            }
         });
-        if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
-            $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
-            console.log('Prepended info icon before feature: ' + feature + ', matched: ' + matchedFeature);
-        }
-    });
+    } else {
+        // For other models, use existing logic
+        checkboxField.find('.gfield_checkbox > div, .gfield-choice-wrapper').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label, .gfield-choice-label');
+            var feature = '';
+            if ($label.length) {
+                feature = $label.contents().filter(function() {
+                    return this.nodeType === 3; // Text nodes only, excludes .feature-info-icon
+                }).text().trim();
+            }
+            if (!feature || !$input.length) {
+                console.warn('Invalid checkbox structure in field (ID: ' + config.fieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class'),
+                    parentHtml: $div.parent().html().substring(0, 500)
+                });
+                return;
+            }
+            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
+                return model === 'K4' ? key.toUpperCase() === feature.toUpperCase() : fuzzyMatch(key, feature, model, feature);
+            });
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
+                console.log('Prepended info icon before feature: ' + feature + ', matched: ' + matchedFeature);
+            }
+        });
+    }
 
     // Bind click events for feature info icons with explicit propagation stop
     checkboxField.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
@@ -1118,32 +1176,45 @@ function updateTrimLevels(model) {
             var formFields = $('#gform_fields_' + formId).find('.gfield').map(function() { return $(this).attr('id'); }).get();
             console.log('All form field IDs:', formFields);
         }
+        if (model === 'TERRAIN') {
+            console.warn('TERRAIN HTML block field (ID: 137) not found or not visible, checking form structure');
+            var formFields = $('#gform_fields_' + formId).find('.gfield').map(function() { return $(this).attr('id'); }).get();
+            console.log('All form field IDs:', formFields);
+        }
         trimLevelsData[model] = [];
         return;
     }
 
     var selectedFeatures = checkboxField.find('input[type="checkbox"]:checked').map(function() {
         var $input = $(this);
-        var $div = $input.closest('.gfield_checkbox > div, .gfield-choice-wrapper');
-        var $label = $div.find('label, .gfield-choice-label');
         var feature = '';
-        if ($label.length) {
-            feature = $label.contents().filter(function() {
-                return this.nodeType === 3; // Text nodes only, excludes .feature-info-icon
-            }).text().trim();
+        
+        if (model === 'TERRAIN') {
+            // For TERRAIN, get feature from value attribute
+            feature = $input.attr('value') || '';
+        } else {
+            // For other models, use the existing logic
+            var $div = $input.closest('.gfield_checkbox > div, .gfield-choice-wrapper');
+            var $label = $div.find('label, .gfield-choice-label');
+            if ($label.length) {
+                feature = $label.contents().filter(function() {
+                    return this.nodeType === 3; // Text nodes only, excludes .feature-info-icon
+                }).text().trim();
+            }
+            if (!feature) {
+                feature = $input.attr('value') || $input.attr('name') || '';
+                console.warn('Empty or invalid feature label for checked checkbox in field (ID: ' + config.fieldId + '), using fallback', {
+                    checkboxId: $input.attr('id'),
+                    value: $input.attr('value'),
+                    name: $input.attr('name'),
+                    divHtml: $div.html(),
+                    labelExists: $label.length > 0,
+                    parentClasses: $div.attr('class'),
+                    parentHtml: $div.parent().html().substring(0, 500)
+                });
+            }
         }
-        if (!feature) {
-            feature = $input.attr('value') || $input.attr('name') || '';
-            console.warn('Empty or invalid feature label for checked checkbox in field (ID: ' + config.fieldId + '), using fallback', {
-                checkboxId: $input.attr('id'),
-                value: $input.attr('value'),
-                name: $input.attr('name'),
-                divHtml: $div.html(),
-                labelExists: $label.length > 0,
-                parentClasses: $div.attr('class'),
-                parentHtml: $div.parent().html().substring(0, 500)
-            });
-        }
+        
         if (!feature) {
             return null;
         }

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GMC Terrain Feature Test</title>
+    <style>
+        .feature-groups {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-column h4 {
+            text-align: center;
+            font-size: 16px;
+            margin-bottom: 10px;
+            background: #2563eb;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .gfield_checkbox {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .gchoice {
+            margin-bottom: 8px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .gchoice input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        .gchoice label {
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .feature-info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffffff;
+            background: #2563eb;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .feature-groups {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>GMC Terrain Feature Selection Test</h1>
+    
+    <div id="field_3_137">
+        <h3>Field 137 - HTML Block</h3>
+        <p>This is where the terrain features will be populated.</p>
+        <div>{terrain feature checkboxes}</div>
+    </div>
+    
+    <div id="field_3_69">
+        <h3>Field 69 - Trim Levels Output</h3>
+        <p>Wonderful, it sounds like the {TRIM LEVELS} would be the best fit, which has all of these features and it is available! One moment while I plug this car in.</p>
+    </div>
+    
+    <script>
+        // Sample terrain features structure based on user's CSV description
+        var terrainFeatures = {
+            'EXTERIOR': [
+                '19" TECHNICAL GRAY MACHINED FACE ALUMINUM WHEELS',
+                '19" MIDNIGHT SILVER MACHINED FACE ALUMINUM WHEELS',
+                '19" GLOSS BLACK PAINTED ALUMINUM WHEELS',
+                '17" DARK ANDROID MACHINE FACE ALUMINUM WHEELS',
+                '20" AFTER MIDNIGHT MACHINED FACE ALUMINUM WHEELS',
+                '17" GRAZEN METALLIC MACHINED FACE ALUMINUM WHEELS',
+                'RAIN SENSING AUTOMATIC WIPERS',
+                'INTELLIBEAM',
+                'PANORAMIC POWER SUNROOF',
+                'LEAD HEADLIGHTS',
+                'HEATED POWER OUTSIDE MIRRORS',
+                'AUTOSENSE POWER LIFTGATE',
+                'FOG LIGHTS'
+            ],
+            'INTERIOR': [
+                '3 YEARS ONSTAR ONE',
+                'ONSTAR BASICS',
+                'MOBILESERVICE PLUS',
+                'CLOTH SEATS CORETEC',
+                'LEATHER SEATS',
+                'VENTILATED FRONT SEATS',
+                'HEATED FRONT SEATS',
+                '6 SPEAKER AUDIO SYSTEM',
+                'REMOTE START',
+                '15" diagonal GMC Premium Infotainment System with available Google built-in',
+                'Wireless Apple CarPlay/Wireless Android Auto capability for compatible phones',
+                '8 WAY POWER SEATS',
+                'SiriusXM with 360L Trial Subscription',
+                'WIFI HOTSPOT CAPABLE',
+                'HEATED STEERING WHEEL',
+                'HD SURROUND VISION',
+                'HD REAR VISION BACKUP CAMERA'
+            ],
+            'MECHANICAL': [
+                'ALL WHEEL DRIVE',
+                'MACPHERSON FRONT SUSPENSION',
+                '1.5L Turbo 4-cylinder engine',
+                'TRAILER HITCH'
+            ],
+            'SAFETY': [
+                'FORWARD COLLISION ALERT',
+                'SAFETY ALERT SEAT',
+                'REAR PARK ASSIST',
+                'REAR CROSS TRAFFIC BRAKING',
+                'TRAFFIC SIGN RECOGNITION',
+                'FRONT PEDESTRIAN AND BICYCLIST BRAKING',
+                'TEEN DRIVER',
+                'BLIND ZONE STEERING ASSIST',
+                'REAR PEDESTRIAN ALERT',
+                'LANE KEEP ASSIST WITH LANE DEPARTURE WARNING'
+            ],
+            'PACKAGES': [
+                'MEMORY PACKAGE',
+                'ELEVATION PREMIUM PACKAGE',
+                'BLACK BADGING PACKAGE',
+                'CONVENIENCE PACKAGE III',
+                'HIT THE ROAD PACKAGE',
+                'INTERIOR PROTECTION PACKAGE',
+                'FLOOR LINER PACKAGE',
+                'DRIVER CONVENIENCE PACKAGE',
+                'TECHNOLOGY PACKAGE II',
+                'BLACK EDITION',
+                'CONVENIENCE PACKAGE II',
+                'TRAILERING PACKAGE'
+            ]
+        };
+        
+        // Generate the HTML for the 5-column layout
+        function generateTerrainHTML() {
+            var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+            var html = '<div class="feature-groups">';
+            var globalIndex = 0;
+            
+            categories.forEach(function(category) {
+                var features = terrainFeatures[category] || [];
+                html += '<div class="feature-column"><h4>' + category + '</h4><ul class="gfield_checkbox">';
+                features.forEach(function(feature, index) {
+                    var uniqueId = 'choice_3_terrain_' + globalIndex;
+                    var inputName = 'input_terrain_' + globalIndex;
+                    html += '<li class="gchoice gchoice_terrain_' + globalIndex + '">';
+                    html += '<input name="' + inputName + '" type="checkbox" value="' + feature + '" id="' + uniqueId + '" data-category="' + category + '">';
+                    html += '<label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">';
+                    html += '<span class="feature-info-icon">i</span>' + feature;
+                    html += '</label>';
+                    html += '</li>';
+                    globalIndex++;
+                });
+                html += '</ul></div>';
+            });
+            html += '</div>';
+            
+            return html;
+        }
+        
+        // Replace the placeholder
+        function populateTerrainFeatures() {
+            var field137 = document.getElementById('field_3_137');
+            var html = generateTerrainHTML();
+            
+            var content = field137.innerHTML;
+            if (content.indexOf('{terrain feature checkboxes}') !== -1) {
+                content = content.replace('{terrain feature checkboxes}', html);
+                field137.innerHTML = content;
+                console.log('Replaced {terrain feature checkboxes} placeholder in field 137');
+            } else {
+                field137.innerHTML += html;
+                console.log('Appended terrain features to field 137');
+            }
+            
+            // Add change event listeners
+            var checkboxes = field137.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(function(checkbox) {
+                checkbox.addEventListener('change', function() {
+                    updateTrimLevels();
+                });
+            });
+        }
+        
+        // Update trim levels based on selected features
+        function updateTrimLevels() {
+            var selectedFeatures = [];
+            var checkboxes = document.querySelectorAll('#field_3_137 input[type="checkbox"]:checked');
+            
+            checkboxes.forEach(function(checkbox) {
+                selectedFeatures.push(checkbox.value);
+            });
+            
+            console.log('Selected features:', selectedFeatures);
+            
+            // Sample trim level matching logic
+            var trimLevels = [];
+            if (selectedFeatures.length > 0) {
+                // This would normally check against CSV data
+                // For demo purposes, we'll use simple logic
+                if (selectedFeatures.some(f => f.includes('ELEVATION'))) {
+                    trimLevels.push('ELEVATION');
+                }
+                if (selectedFeatures.some(f => f.includes('AT4') || f.includes('ALL WHEEL DRIVE'))) {
+                    trimLevels.push('AT4');
+                }
+                if (selectedFeatures.some(f => f.includes('LEATHER') || f.includes('HEATED'))) {
+                    trimLevels.push('DENALI');
+                }
+                
+                // If no specific matches, default to all trim levels
+                if (trimLevels.length === 0) {
+                    trimLevels = ['ELEVATION', 'AT4', 'DENALI'];
+                }
+            }
+            
+            // Update field 69
+            var field69 = document.getElementById('field_3_69');
+            var paragraph = field69.querySelector('p');
+            
+            if (trimLevels.length > 0) {
+                var trimText = trimLevels.length > 2
+                    ? trimLevels.slice(0, -1).join(', ') + ', and ' + trimLevels[trimLevels.length - 1]
+                    : trimLevels.join(' and ');
+                
+                var updatedText = 'Wonderful, it sounds like the ' + trimText + ' would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
+                paragraph.textContent = updatedText;
+                console.log('Updated field 69 with trim levels:', trimText);
+            } else {
+                paragraph.textContent = 'Wonderful, it sounds like the {TRIM LEVELS} would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            populateTerrainFeatures();
+        });
+    </script>
+</body>
+</html>
