@@ -1045,17 +1045,17 @@ jQuery(document).ready(function($) {
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
                     console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
-                    html += '<div class="feature-column"><h4>' + category + '</h4><ul class="gfield_checkbox">';
+                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
                     catFeatures.forEach(function(feature, index) {
                         var uniqueId = 'choice_3_terrain_' + globalIndex;
                         var inputName = 'input_terrain_' + globalIndex;
-                        html += '<li class="gchoice gchoice_terrain_' + globalIndex + '">\
+                        html += '<div class="gchoice gchoice_terrain_' + globalIndex + '">\
                             <input name="' + inputName + '" type="checkbox" value="' + feature + '" id="' + uniqueId + '" data-category="' + category + '">\
                             <label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>\
-                        </li>';
+                        </div>';
                         globalIndex++;
                     });
-                    html += '</ul></div>';
+                    html += '</div></div>';
                 });
                 html += '</div>';
                 
@@ -1168,7 +1168,126 @@ jQuery(document).ready(function($) {
     });
 }
 
-function updateTrimLevels(model) {
+	function processTerrainTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
+		console.log('Processing TERRAIN trim levels for selected features:', selectedFeatures);
+		
+		var trimLevels = ['ELEVATION', 'AT4', 'DENALI'];
+		var matchingTrimLevels = [];
+		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+		var featureToColumnMap = {};
+		var trimLevelRows = {};
+		
+		// Parse the CSV data to map features to columns and find trim level rows
+		csvData.forEach(function(row, rowIndex) {
+			if (row.length > 0) {
+				var firstCell = row[0] ? row[0].trim() : '';
+				
+				// Check if this is a category header row
+				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+					var category = firstCell.match(/\{(.+)\}/)[1];
+					console.log('Found category:', category);
+					
+					// Map features to their column indices
+					for (var i = 1; i < row.length; i++) {
+						var feature = row[i] ? row[i].trim() : '';
+						if (feature && feature !== '') {
+							featureToColumnMap[feature] = i;
+							console.log('Mapped feature "' + feature + '" to column ' + i);
+						}
+					}
+				}
+				// Check if this is a trim level row
+				else if (trimLevels.includes(firstCell)) {
+					trimLevelRows[firstCell] = row;
+					console.log('Found trim level row for:', firstCell);
+				}
+			}
+		});
+		
+		console.log('Feature to column mapping:', featureToColumnMap);
+		console.log('Trim level rows:', Object.keys(trimLevelRows));
+		
+		// Check which trim levels have all selected features
+		trimLevels.forEach(function(trimLevel) {
+			if (trimLevelRows[trimLevel]) {
+				var hasAllFeatures = true;
+				var featureResults = [];
+				
+				selectedFeatures.forEach(function(feature) {
+					var columnIndex = featureToColumnMap[feature];
+					if (columnIndex !== undefined) {
+						var value = trimLevelRows[trimLevel][columnIndex];
+						var hasFeature = value && value.trim().toLowerCase() === 'yes';
+						featureResults.push({
+							feature: feature,
+							value: value,
+							hasFeature: hasFeature
+						});
+						
+						if (!hasFeature) {
+							hasAllFeatures = false;
+						}
+					} else {
+						console.log('Feature "' + feature + '" not found in column mapping');
+						hasAllFeatures = false;
+					}
+				});
+				
+				console.log('Trim level ' + trimLevel + ' feature check:', featureResults);
+				console.log('Has all features:', hasAllFeatures);
+				
+				if (hasAllFeatures) {
+					matchingTrimLevels.push(trimLevel);
+				}
+			}
+		});
+		
+		console.log('Matching trim levels for ' + model + ':', matchingTrimLevels);
+		
+		// Update the HTML block with results
+		var resultText = '';
+		if (matchingTrimLevels.length > 0) {
+			resultText = 'Available trim levels with your selected features: ' + matchingTrimLevels.join(', ');
+		} else {
+			resultText = 'No trim levels have all your selected features. Please adjust your selections.';
+		}
+		
+		if (htmlBlock.length) {
+			htmlBlock.find('p').text(resultText);
+		}
+		
+		// Update the trim levels button
+		if (trimLevelsButtonBlock.length) {
+			var buttonText = matchingTrimLevels.length > 0 ? 
+				'View Available Trim Levels (' + matchingTrimLevels.length + ')' : 
+				'No Matching Trim Levels';
+			
+			trimLevelsButtonBlock.html('<button type="button" id="viewTrimLevelsButton" class="button">' + buttonText + '</button>');
+			
+			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
+				e.preventDefault();
+				if (matchingTrimLevels.length > 0) {
+					var detailsHtml = '<h2>Available Trim Levels for ' + model + '</h2>';
+					detailsHtml += '<p>Based on your selected features, the following trim levels are available:</p>';
+					detailsHtml += '<ul>';
+					matchingTrimLevels.forEach(function(trimLevel) {
+						detailsHtml += '<li><strong>' + trimLevel + '</strong></li>';
+					});
+					detailsHtml += '</ul>';
+					detailsHtml += '<p>Selected features: ' + selectedFeatures.join(', ') + '</p>';
+					
+					showTrimLevelsPopup(detailsHtml);
+				} else {
+					alert('No trim levels match your selected features. Please adjust your selections.');
+				}
+			});
+		}
+		
+		// Store the results
+		trimLevelsData[model] = matchingTrimLevels;
+	}
+
+	function updateTrimLevels(model) {
     var config = modelConfigs[model];
     if (!config) {
         console.warn('Model configuration not found for: ' + model);
@@ -1372,6 +1491,19 @@ function updateTrimLevels(model) {
     }
 
     fetchCsvWithRetry(config.csvUrl, model, 3, 1000).then(function(csvText) {
+        // Special handling for TERRAIN model
+        if (model === 'TERRAIN') {
+            Papa.parse(csvText, {
+                skipEmptyLines: true,
+                complete: function(results) {
+                    console.log(model + ' CSV parsed, rows: ' + results.data.length);
+                    processTerrainTrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
+                }
+            });
+            return;
+        }
+        
+        // Standard handling for other models
         Papa.parse(csvText, {
             header: true,
             skipEmptyLines: true,
