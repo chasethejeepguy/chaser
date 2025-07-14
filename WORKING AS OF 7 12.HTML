@@ -1457,18 +1457,8 @@ jQuery(document).ready(function($) {
 						});
 					}
 					
-					// Create a simple popup to show the details
-					var popup = $('<div id="trimLevelsPopup" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border: 2px solid #333; z-index: 10000; max-width: 80%; max-height: 80%; overflow-y: auto;"></div>');
-					var overlay = $('<div id="trimLevelsOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;"></div>');
-					
-					popup.html(detailsHtml + '<br><button type="button" onclick="$(\"#trimLevelsPopup, #trimLevelsOverlay\").remove();" style="margin-top: 10px;">Close</button>');
-					
-					$('body').append(overlay, popup);
-					
-					// Close popup when clicking overlay
-					overlay.on('click', function() {
-						$('#trimLevelsPopup, #trimLevelsOverlay').remove();
-					});
+					// Call the proper showTrimLevelsPopup function like other models
+					showTrimLevelsPopup(model, matchingTrimLevels, config.modelFilter);
 				} else {
 					alert('No trim levels match your selected features. Please adjust your selections.');
 				}
