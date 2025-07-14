@@ -9,7 +9,12 @@ Successfully implemented GMC Terrain feature selection functionality with 5-colu
 - Added `terrainHtmlBlockFieldId = 137` to the field ID definitions
 - This field will contain the HTML block where terrain feature checkboxes are populated
 
-### 2. Updated populateTerrainFeatures() Function
+### 2. Fixed Radio Button Detection
+- **Issue**: The original code was looking for `input_3_107` but GMC model field 107 uses radio buttons with names like `choice_3_107_0`
+- **Fix**: Updated event handlers to detect radio buttons by checking if the name attribute contains `input_107`
+- **Fix**: Added proper radio button selection detection using `.is(':checked')` instead of `.val()`
+
+### 3. Updated populateTerrainFeatures() Function
 **Previous behavior:** Populated field 129 (checkbox field) directly
 **New behavior:** 
 - Fetches terrain.csv from `https://hutchinsonautoteam.com/gmcmodels/terrain.csv`
@@ -19,14 +24,14 @@ Successfully implemented GMC Terrain feature selection functionality with 5-colu
 - Binds change events to checkboxes for trim level updates
 - Adds info icons for feature descriptions
 
-### 3. Enhanced updateTrimLevels() Function
+### 4. Enhanced updateTrimLevels() Function
 **New TERRAIN-specific handling:**
 - Detects when model is 'TERRAIN' and uses field 137 instead of standard checkbox field
 - Extracts selected features from checkbox values rather than labels
 - Maintains compatibility with existing Kia model functionality
 - Properly handles the different DOM structure for terrain features
 
-### 4. CSS Integration
+### 5. CSS Integration
 The existing CSS already includes:
 ```css
 .feature-groups {
@@ -46,7 +51,7 @@ The existing CSS already includes:
 }
 ```
 
-### 5. CSV Structure Handling
+### 6. CSV Structure Handling
 The function expects CSV format as described:
 ```
 TRIM LEVELS FOR {EXTERIOR},feature1,feature2,feature3,...
@@ -131,9 +136,37 @@ Created `test_terrain.html` to demonstrate:
 4. **Consistent**: Maintains same look and feel as existing Kia models
 5. **Flexible**: Supports future GMC models with similar structure
 
+## Troubleshooting
+
+### Common Issues and Solutions
+
+1. **TERRAIN not detected when selected**
+   - **Problem**: Radio button detection not working
+   - **Solution**: Check that field 107 contains radio buttons with `value="TERRAIN"`
+   - **Debug**: Use the debug script to verify radio button structure
+
+2. **Field 137 not found**
+   - **Problem**: HTML block field doesn't exist
+   - **Solution**: Ensure field 137 exists in the form and contains the placeholder `{terrain feature checkboxes}`
+
+3. **Features not populating**
+   - **Problem**: CSV fetch failing or parsing error
+   - **Solution**: Check browser console for CSV fetch errors and verify CSV structure
+
+4. **Trim levels not updating**
+   - **Problem**: Field 69 not found or placeholder missing
+   - **Solution**: Ensure field 69 exists and contains `{TRIM LEVELS}` placeholder
+
+### Debug Script
+Use `/workspace/debug_terrain.js` to test:
+- Radio button detection
+- Field existence
+- Placeholder presence
+- Event binding verification
+
 ## Files Modified
 - `/workspace/WORKING AS OF 7 12.HTML` - Main implementation
-- `/workspace/test_terrain.html` - Test/demo file (created)
+- `/workspace/debug_terrain.js` - Debug/testing script (created)
 - `/workspace/GMC_Terrain_Implementation_Summary.md` - This summary (created)
 
 The implementation is complete and ready for use with the GMC Terrain model selection system.

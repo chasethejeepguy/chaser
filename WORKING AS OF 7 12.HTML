@@ -1859,17 +1859,20 @@ function initFormBindings() {
                         input.attr('data-last-checked', new Date().toISOString());
                         if (input.attr('id') !== 'input_' + formId + '_' + appointmentConfirmationFieldId) {
                             debounceCheckCustomerInfo();
-                            if (input.attr('id') === 'input_' + formId + '_' + dateFieldId || input.is('input[type="radio"]') || input.attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
-                                updateAppointmentConfirmationField();
-                                if (input.attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
-                                    if (input.val() === 'TERRAIN') {
-                                        populateTerrainFeatures();
-                                        updateTrimLevels('TERRAIN');
-                                    } else {
-                                        terrainPopulated = false;
-                                    }
+                                                    if (input.attr('id') === 'input_' + formId + '_' + dateFieldId || input.is('input[type="radio"]') || input.attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
+                            updateAppointmentConfirmationField();
+                            // Check for GMC model selection (radio buttons)
+                            if (input.is('input[type="radio"]') && input.attr('name') && input.attr('name').indexOf('input_' + gmcModelFieldId) !== -1) {
+                                if (input.val() === 'TERRAIN' && input.is(':checked')) {
+                                    console.log('TERRAIN selected via radio button');
+                                    populateTerrainFeatures();
+                                    updateTrimLevels('TERRAIN');
+                                } else if (input.is(':checked')) {
+                                    console.log('Non-TERRAIN GMC model selected: ' + input.val());
+                                    terrainPopulated = false;
                                 }
                             }
+                        }
                         }
                     });
                     console.log('Events on #' + input.attr('id') + ':', $._data(input[0], 'events'));
@@ -1899,17 +1902,20 @@ function initFormBindings() {
                 $(this).attr('data-last-checked', new Date().toISOString());
                 if ($(this).attr('id') !== 'input_' + formId + '_' + appointmentConfirmationFieldId) {
                     debounceCheckCustomerInfo();
-                    if ($(this).attr('id') === 'input_' + formId + '_' + dateFieldId || $(this).is('input[type="radio"]') || $(this).attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
-                        updateAppointmentConfirmationField();
-                        if ($(this).attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
-                            if ($(this).val() === 'TERRAIN') {
-                                populateTerrainFeatures();
-                                updateTrimLevels('TERRAIN');
-                            } else {
-                                terrainPopulated = false;
-                            }
-                        }
-                    }
+                                    if ($(this).attr('id') === 'input_' + formId + '_' + dateFieldId || $(this).is('input[type="radio"]') || $(this).attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
+                    updateAppointmentConfirmationField();
+                                         // Check for GMC model selection (radio buttons)
+                     if ($(this).is('input[type="radio"]') && $(this).attr('name') && $(this).attr('name').indexOf('input_' + gmcModelFieldId) !== -1) {
+                         if ($(this).val() === 'TERRAIN' && $(this).is(':checked')) {
+                             console.log('TERRAIN selected via delegated radio button');
+                             populateTerrainFeatures();
+                             updateTrimLevels('TERRAIN');
+                         } else if ($(this).is(':checked')) {
+                             console.log('Non-TERRAIN GMC model selected via delegated: ' + $(this).val());
+                             terrainPopulated = false;
+                         }
+                     }
+                }
                 }
             });
 
@@ -2051,9 +2057,16 @@ function initFormBindings() {
                 setTimeout(function() {
                     checkCustomerInfo();
                     Object.keys(modelConfigs).forEach(function(model) {
-                        if (model === 'TERRAIN' && $('#input_' + formId + '_' + gmcModelFieldId).val() === 'TERRAIN') {
-                            populateTerrainFeatures();
-                            updateTrimLevels(model);
+                        if (model === 'TERRAIN') {
+                            // Check if TERRAIN radio button is selected
+                            var terrainRadio = $('#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"][value="TERRAIN"]');
+                            if (terrainRadio.length && terrainRadio.is(':checked')) {
+                                console.log('TERRAIN radio button is checked, populating features');
+                                populateTerrainFeatures();
+                                updateTrimLevels(model);
+                            } else {
+                                console.log('TERRAIN radio button not checked or not found');
+                            }
                         } else if (model !== 'TERRAIN') {
                             updateTrimLevels(model);
                         }
@@ -2073,9 +2086,16 @@ function initFormBindings() {
                 setTimeout(function() {
                     checkCustomerInfo();
                     Object.keys(modelConfigs).forEach(function(model) {
-                        if (model === 'TERRAIN' && $('#input_' + formId + '_' + gmcModelFieldId).val() === 'TERRAIN') {
-                            populateTerrainFeatures();
-                            updateTrimLevels(model);
+                        if (model === 'TERRAIN') {
+                            // Check if TERRAIN radio button is selected
+                            var terrainRadio = $('#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"][value="TERRAIN"]');
+                            if (terrainRadio.length && terrainRadio.is(':checked')) {
+                                console.log('TERRAIN radio button is checked, populating features');
+                                populateTerrainFeatures();
+                                updateTrimLevels(model);
+                            } else {
+                                console.log('TERRAIN radio button not checked or not found');
+                            }
                         } else if (model !== 'TERRAIN') {
                             updateTrimLevels(model);
                         }
