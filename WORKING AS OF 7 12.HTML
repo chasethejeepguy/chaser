@@ -938,16 +938,34 @@ jQuery(document).ready(function($) {
         return;
     }
 
+    // Try multiple selectors to find the HTML block field
     var htmlBlock = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
+    if (!htmlBlock.length) {
+        htmlBlock = $('#field_' + formId + '_137');
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('#input_' + formId + '_137');
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('[id*="137"]').filter(function() {
+            return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+        });
+    }
+    
     console.log('HTML Block field (ID: 137) debug:', {
         selector: '#field_' + formId + '_' + terrainHtmlBlockFieldId,
         exists: htmlBlock.length > 0,
         visible: htmlBlock.length ? htmlBlock.is(':visible') : false,
-        content: htmlBlock.length ? htmlBlock.html().substring(0, 200) : 'N/A'
+        content: htmlBlock.length ? htmlBlock.html().substring(0, 200) : 'N/A',
+        actualId: htmlBlock.length ? htmlBlock.attr('id') : 'N/A',
+        allFields137: $('[id*="137"]').map(function() { return this.id; }).get()
     });
     
     if (!htmlBlock.length) {
-        console.warn('Terrain HTML block field (ID: 137) not found');
+        console.warn('Terrain HTML block field (ID: 137) not found with any selector');
+        console.log('All form fields:', $('#gform_fields_' + formId).find('.gfield').map(function() { 
+            return { id: $(this).attr('id'), class: $(this).attr('class') }; 
+        }).get());
         return;
     }
 
@@ -1014,12 +1032,19 @@ jQuery(document).ready(function($) {
                     htmlBlock.html(htmlContent);
                     console.log('Replaced {terrain feature checkboxes} placeholder in field 137');
                 } else {
-                    // If no placeholder found, append to the field
-                    htmlBlock.append(html);
-                    console.log('Appended terrain features to field 137 (no placeholder found)');
+                    // If no placeholder found, try to find a suitable container or append to the field
+                    var targetContainer = htmlBlock.find('.ginput_container, .gfield_html_formatted').first();
+                    if (targetContainer.length) {
+                        targetContainer.html(html);
+                        console.log('Replaced content in container within field 137');
+                    } else {
+                        htmlBlock.html(html);
+                        console.log('Replaced entire content of field 137 (no placeholder or container found)');
+                    }
                 }
                 
                 console.log('HTML Block content after replacement:', htmlBlock.html().substring(0, 300));
+                console.log('Checkboxes created:', htmlBlock.find('input[type="checkbox"]').length);
 
                 terrainPopulated = true;
                 console.log('Terrain features populated into 5 columns in field 137');
@@ -1074,6 +1099,14 @@ function updateTrimLevels(model) {
     if (model === 'TERRAIN') {
         // For TERRAIN, checkboxes are in field 137 (HTML block)
         checkboxField = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
+        if (!checkboxField.length) {
+            checkboxField = $('#field_' + formId + '_137');
+        }
+        if (!checkboxField.length) {
+            checkboxField = $('[id*="137"]').filter(function() {
+                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+            });
+        }
         htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
         trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
     } else {
@@ -4097,19 +4130,76 @@ form.on('submit', function(e) {
 // Test function for debugging
 window.testTerrainDebug = function() {
     console.log('=== Manual Terrain Debug Test ===');
+    console.log('Form ID:', formId);
+    console.log('terrainHtmlBlockFieldId:', terrainHtmlBlockFieldId);
     console.log('terrainPopulated:', terrainPopulated);
     console.log('modelConfigs.TERRAIN:', modelConfigs['TERRAIN']);
-    console.log('HTML Block field exists:', $('#field_' + formId + '_' + terrainHtmlBlockFieldId).length > 0);
+    
+    // Try all possible selectors
+    var selectors = [
+        '#field_' + formId + '_' + terrainHtmlBlockFieldId,
+        '#field_' + formId + '_137',
+        '#input_' + formId + '_137',
+        '[id*="137"]'
+    ];
+    
+    selectors.forEach(function(selector, index) {
+        var elements = $(selector);
+        console.log('Selector ' + index + ' (' + selector + '):', {
+            count: elements.length,
+            ids: elements.map(function() { return this.id; }).get()
+        });
+    });
+    
+    var htmlBlock = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
+    if (!htmlBlock.length) {
+        htmlBlock = $('#field_' + formId + '_137');
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('[id*="137"]').first();
+    }
+    
+    console.log('Final HTML Block:', {
+        found: htmlBlock.length > 0,
+        id: htmlBlock.attr('id'),
+        visible: htmlBlock.is(':visible'),
+        content: htmlBlock.html() ? htmlBlock.html().substring(0, 500) : 'N/A'
+    });
+    
+    var checkboxes = htmlBlock.find('input[type="checkbox"]');
+    console.log('Checkboxes found before population:', checkboxes.length);
     
     if (typeof populateTerrainFeatures === 'function') {
         console.log('Calling populateTerrainFeatures...');
         populateTerrainFeatures();
+        
+        // Check again after population
+        var checkboxesAfter = htmlBlock.find('input[type="checkbox"]');
+        console.log('Checkboxes found after population:', checkboxesAfter.length);
+        checkboxesAfter.each(function(i) {
+            console.log('Checkbox ' + i + ':', {
+                id: $(this).attr('id'),
+                name: $(this).attr('name'),
+                value: $(this).attr('value'),
+                checked: $(this).is(':checked')
+            });
+        });
     } else {
         console.log('populateTerrainFeatures function not found');
     }
+    
+    console.log('Calling updateTrimLevels...');
+    updateTrimLevels('TERRAIN');
 };
 
-console.log('Debug function available: testTerrainDebug()');
+// Force populate function for debugging
+window.forcePopulateTerrainFeatures = function() {
+    console.log('=== Force Populating Terrain Features ===');
+    terrainPopulated = false; // Reset the flag
+    populateTerrainFeatures();
+};
+
+console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures()');
 
 });
 
