@@ -1073,7 +1073,7 @@ jQuery(document).ready(function($) {
                         // Escape HTML entities for safe attribute values
                         var escapedFeature = feature;
                         escapedFeature = escapedFeature.replace(/"/g, '&quot;');
-                        escapedFeature = escapedFeature.replace(/'/g, '&#39;');
+                        escapedFeature = escapedFeature.replace(/'/g, "&#39;");
                         
                         html += '<div class="gchoice gchoice_terrain_' + globalIndex + '">\
                             <input name="' + inputName + '" type="checkbox" value="' + escapedFeature + '" data-feature="' + escapedFeature + '" id="' + uniqueId + '" data-category="' + category + '">\
