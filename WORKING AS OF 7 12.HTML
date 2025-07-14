@@ -1060,8 +1060,20 @@ jQuery(document).ready(function($) {
                     catFeatures.forEach(function(feature, index) {
                         var uniqueId = 'choice_3_terrain_' + globalIndex;
                         var inputName = 'input_terrain_' + globalIndex;
+                        
+                        // Debug the feature value being set
+                        console.log('Setting checkbox value for ' + category + '[' + index + ']:', {
+                            feature: feature,
+                            featureLength: feature.length,
+                            uniqueId: uniqueId,
+                            inputName: inputName
+                        });
+                        
+                        // Escape quotes in the value attribute
+                        var escapedFeature = feature.replace(/"/g, '&quot;');
+                        
                         html += '<div class="gchoice gchoice_terrain_' + globalIndex + '">\
-                            <input name="' + inputName + '" type="checkbox" value="' + feature + '" id="' + uniqueId + '" data-category="' + category + '">\
+                            <input name="' + inputName + '" type="checkbox" value="' + escapedFeature + '" id="' + uniqueId + '" data-category="' + category + '">\
                             <label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>\
                         </div>';
                         globalIndex++;
@@ -1233,11 +1245,70 @@ jQuery(document).ready(function($) {
 				
 				selectedFeatures.forEach(function(feature) {
 					var columnIndex = featureToColumnMap[feature];
+					var matchedFeature = feature;
+					
+					// If exact match not found, try fuzzy matching
+					if (columnIndex === undefined) {
+						console.log('Feature "' + feature + '" not found in column mapping, trying fuzzy matching...');
+						var bestMatch = null;
+						var bestScore = 0;
+						var threshold = 0.3; // Lower threshold for partial matches
+						
+						// Try to find partial matches
+						Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+							var score = 0;
+							
+							// Check if the selected feature is contained in the CSV feature
+							if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+								score = 0.8; // High score for containment
+							}
+							// Check if CSV feature starts with the selected feature
+							else if (csvFeature.toLowerCase().startsWith(feature.toLowerCase())) {
+								score = 0.7;
+							}
+							// Check if selected feature is a significant part of CSV feature
+							else if (feature.length >= 3 && csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+								score = 0.6;
+							}
+							// Fuzzy string matching as fallback
+							else {
+								var featureNorm = feature.toLowerCase().replace(/[^a-z0-9]/g, '');
+								var csvFeatureNorm = csvFeature.toLowerCase().replace(/[^a-z0-9]/g, '');
+								if (featureNorm.length > 0 && csvFeatureNorm.length > 0) {
+									var commonLength = 0;
+									var maxLength = Math.max(featureNorm.length, csvFeatureNorm.length);
+									for (var i = 0; i < Math.min(featureNorm.length, csvFeatureNorm.length); i++) {
+										if (featureNorm[i] === csvFeatureNorm[i]) {
+											commonLength++;
+										} else {
+											break;
+										}
+									}
+									score = commonLength / maxLength;
+								}
+							}
+							
+							console.log('Fuzzy match attempt: "' + feature + '" vs "' + csvFeature + '": score=' + score);
+							
+							if (score > bestScore && score >= threshold) {
+								bestScore = score;
+								bestMatch = csvFeature;
+							}
+						});
+						
+						if (bestMatch) {
+							console.log('Found fuzzy match for "' + feature + '": "' + bestMatch + '" (score: ' + bestScore + ')');
+							columnIndex = featureToColumnMap[bestMatch];
+							matchedFeature = bestMatch;
+						}
+					}
+					
 					if (columnIndex !== undefined) {
 						var value = trimLevelRows[trimLevel][columnIndex];
 						var hasFeature = value && value.trim().toLowerCase() === 'yes';
 						featureResults.push({
 							feature: feature,
+							matchedFeature: matchedFeature,
 							value: value,
 							hasFeature: hasFeature
 						});
@@ -1246,7 +1317,7 @@ jQuery(document).ready(function($) {
 							hasAllFeatures = false;
 						}
 					} else {
-						console.log('Feature "' + feature + '" not found in column mapping');
+						console.log('Feature "' + feature + '" not found in column mapping even with fuzzy matching');
 						hasAllFeatures = false;
 					}
 				});
@@ -1293,6 +1364,36 @@ jQuery(document).ready(function($) {
 					});
 					detailsHtml += '</ul>';
 					detailsHtml += '<p>Selected features: ' + selectedFeatures.join(', ') + '</p>';
+					
+					// Show matched features for debugging
+					if (matchingTrimLevels.length > 0) {
+						detailsHtml += '<h3>Feature Matching Details:</h3>';
+						matchingTrimLevels.forEach(function(trimLevel) {
+							if (trimLevelRows[trimLevel]) {
+								detailsHtml += '<h4>' + trimLevel + '</h4><ul>';
+								selectedFeatures.forEach(function(feature) {
+									var columnIndex = featureToColumnMap[feature];
+									var matchedFeature = feature;
+									
+									// Try fuzzy matching if exact match not found
+									if (columnIndex === undefined) {
+										Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+											if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+												columnIndex = featureToColumnMap[csvFeature];
+												matchedFeature = csvFeature;
+											}
+										});
+									}
+									
+									if (columnIndex !== undefined) {
+										var value = trimLevelRows[trimLevel][columnIndex];
+										detailsHtml += '<li>' + feature + (matchedFeature !== feature ? ' (matched: ' + matchedFeature + ')' : '') + ': ' + value + '</li>';
+									}
+								});
+								detailsHtml += '</ul>';
+							}
+						});
+					}
 					
 					showTrimLevelsPopup(detailsHtml);
 				} else {
@@ -1459,6 +1560,18 @@ jQuery(document).ready(function($) {
         if (model === 'TERRAIN') {
             // For TERRAIN, get feature from value attribute
             feature = $input.attr('value') || '';
+            // Unescape HTML entities in the value
+            feature = feature.replace(/&quot;/g, '"');
+            
+            console.log('TERRAIN checkbox debug:', {
+                id: $input.attr('id'),
+                rawValue: $input.attr('value'),
+                unescapedValue: feature,
+                valueLength: feature.length,
+                name: $input.attr('name'),
+                checked: $input.is(':checked'),
+                labelText: $input.next('label').text().substring(0, 100)
+            });
         } else {
             // For other models, use the existing logic
             var $div = $input.closest('.gfield_checkbox > div, .gfield-choice-wrapper');
