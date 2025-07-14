@@ -1070,13 +1070,12 @@ jQuery(document).ready(function($) {
                         });
                         
                         // Use data attribute to store the full feature name to avoid HTML escaping issues
-                        // Escape HTML entities for safe attribute values
-                        var escapedFeature = feature;
-                        escapedFeature = escapedFeature.replace(/"/g, '&quot;');
-                        escapedFeature = escapedFeature.replace(/'/g, '&#' + '39;');
+                        // Create a simple ID-based value and store full feature in data attribute
+                        var simpleValue = 'terrain_feature_' + globalIndex;
+                        var escapedFeature = feature.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
                         
                         html += '<div class="gchoice gchoice_terrain_' + globalIndex + '">\
-                            <input name="' + inputName + '" type="checkbox" value="' + escapedFeature + '" data-feature="' + escapedFeature + '" id="' + uniqueId + '" data-category="' + category + '">\
+                            <input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-feature="' + escapedFeature + '" data-full-feature="' + escapedFeature + '" id="' + uniqueId + '" data-category="' + category + '">\
                             <label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>\
                         </div>';
                         globalIndex++;
@@ -1657,8 +1656,8 @@ jQuery(document).ready(function($) {
         var feature = '';
         
         if (model === 'TERRAIN') {
-            // For TERRAIN, get feature from value attribute or data-feature attribute
-            feature = $input.attr('data-feature') || $input.attr('value') || '';
+            // For TERRAIN, get feature from data-full-feature attribute
+            feature = $input.attr('data-full-feature') || $input.attr('data-feature') || '';
             // Unescape HTML entities in the value
             // Clean up HTML entities
             feature = feature.replace(/&quot;/g, '"');
@@ -1668,6 +1667,7 @@ jQuery(document).ready(function($) {
                 id: $input.attr('id'),
                 rawValue: $input.attr('value'),
                 dataFeature: $input.attr('data-feature'),
+                dataFullFeature: $input.attr('data-full-feature'),
                 unescapedValue: feature,
                 valueLength: feature.length,
                 name: $input.attr('name'),
