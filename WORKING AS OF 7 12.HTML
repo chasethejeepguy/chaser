@@ -1230,6 +1230,17 @@ jQuery(document).ready(function($) {
 				else if (trimLevels.includes(firstCell)) {
 					trimLevelRows[firstCell] = row;
 					console.log('Found trim level row for:', firstCell);
+					
+					// Debug specific trim level data for SAFETY section
+					if (currentCategory === 'SAFETY') {
+						console.log('=== SAFETY TRIM LEVEL DATA FOR ' + firstCell + ' ===');
+						console.log('Full row:', row);
+						console.log('Row length:', row.length);
+						for (var i = 0; i < Math.min(row.length, 15); i++) {
+							console.log('Column ' + i + ': "' + row[i] + '"');
+						}
+						console.log('=== END SAFETY TRIM LEVEL DATA ===');
+					}
 				}
 			}
 		});
@@ -1682,10 +1693,16 @@ jQuery(document).ready(function($) {
     fetchCsvWithRetry(config.csvUrl, model, 3, 1000).then(function(csvText) {
         // Special handling for TERRAIN model
         if (model === 'TERRAIN') {
+            // Log the full CSV content to debug data issues
+            console.log('=== FULL TERRAIN CSV CONTENT ===');
+            console.log(csvText);
+            console.log('=== END TERRAIN CSV CONTENT ===');
+            
             Papa.parse(csvText, {
                 skipEmptyLines: true,
                 complete: function(results) {
                     console.log(model + ' CSV parsed, rows: ' + results.data.length);
+                    console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
                     processTerrainTrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
                 }
             });
