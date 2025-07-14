@@ -1072,7 +1072,8 @@ jQuery(document).ready(function($) {
                         // Use data attribute to store the full feature name to avoid HTML escaping issues
                         // Create a simple ID-based value and store full feature in data attribute
                         var simpleValue = 'terrain_feature_' + globalIndex;
-                        var escapedFeature = feature.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                        var escapedFeature = feature.replace(/"/g, '&quot;');
+                        escapedFeature = escapedFeature.replace(/'/g, '&#39;');
                         
                         html += '<div class="gchoice gchoice_terrain_' + globalIndex + '">\
                             <input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-feature="' + escapedFeature + '" data-full-feature="' + escapedFeature + '" id="' + uniqueId + '" data-category="' + category + '">\
