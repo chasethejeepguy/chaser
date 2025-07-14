@@ -1018,9 +1018,20 @@ jQuery(document).ready(function($) {
                                 console.log('Stored category: ' + currentCategory + ' with ' + features.length + ' features');
                             }
                             currentCategory = firstCell.match(/\{(.+)\}/)[1];
-                            features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; });
+                            // Clean up features by removing extra quotes and trimming
+                            features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                // Remove surrounding quotes if present
+                                var cleaned = f.trim();
+                                if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                    cleaned = cleaned.slice(1, -1);
+                                }
+                                // Handle double quotes inside the string (CSV escape format)
+                                cleaned = cleaned.replace(/""/g, '"');
+                                return cleaned;
+                            });
                             console.log('Row ' + rowIndex + ': Parsed category: ' + currentCategory + ', features: ' + features.length);
                             console.log('Features for ' + currentCategory + ':', features.slice(0, 5)); // Show first 5 features
+                            console.log('Raw features before cleaning:', row.slice(1, 6)); // Show raw features
                         }
                     }
                 });
@@ -1191,8 +1202,15 @@ jQuery(document).ready(function($) {
 					for (var i = 1; i < row.length; i++) {
 						var feature = row[i] ? row[i].trim() : '';
 						if (feature && feature !== '') {
-							featureToColumnMap[feature] = i;
-							console.log('Mapped feature "' + feature + '" to column ' + i);
+							// Clean up the feature name the same way as in populateTerrainFeatures
+							var cleanedFeature = feature;
+							if (cleanedFeature.startsWith('"') && cleanedFeature.endsWith('"')) {
+								cleanedFeature = cleanedFeature.slice(1, -1);
+							}
+							cleanedFeature = cleanedFeature.replace(/""/g, '"');
+							
+							featureToColumnMap[cleanedFeature] = i;
+							console.log('Mapped feature "' + cleanedFeature + '" (raw: "' + feature + '") to column ' + i);
 						}
 					}
 				}
