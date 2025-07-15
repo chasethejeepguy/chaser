@@ -1188,11 +1188,22 @@ function populateTerrainFeaturesAfterDescriptions() {
                         // Try to find the full feature name from terrain descriptions
                         var fullFeatureName = feature;
                         if (terrainFeatureDescriptions && Object.keys(terrainFeatureDescriptions).length > 0) {
-                            var matchedKey = Object.keys(terrainFeatureDescriptions).find(function(key) {
-                                return key.includes(String(feature).toUpperCase()) || String(feature).toUpperCase().includes(key);
-                            });
-                            if (matchedKey) {
-                                fullFeatureName = matchedKey;
+                            // First try exact match
+                            var exactMatch = terrainFeatureDescriptions[String(feature).toUpperCase()];
+                            if (exactMatch) {
+                                fullFeatureName = feature; // Use original since we have exact match
+                                console.log('✅ Found exact match for:', feature);
+                            } else {
+                                // Try partial matching for backwards compatibility
+                                var matchedKey = Object.keys(terrainFeatureDescriptions).find(function(key) {
+                                    return key.includes(String(feature).toUpperCase()) || String(feature).toUpperCase().includes(key);
+                                });
+                                if (matchedKey) {
+                                    fullFeatureName = matchedKey;
+                                    console.log('⚠️ Found partial match for:', feature, '→', matchedKey);
+                                } else {
+                                    console.log('❌ No match found for:', feature);
+                                }
                             }
                         }
                         
