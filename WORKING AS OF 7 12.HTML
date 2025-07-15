@@ -819,15 +819,27 @@ jQuery(document).ready(function($) {
             // Parse the new CSV format with curly braces: {FEATURE_NAME :Description}
             terrainFeatureDescriptions = {};
             
-            // Find all entries enclosed in curly braces
+            // Find all entries enclosed in curly braces - more robust regex
             var curlyBraceRegex = /\{([^}]+)\}/g;
-            var matches = csvText.match(curlyBraceRegex);
+            var matches = [];
+            var match;
             
-            if (matches) {
-                matches.forEach(function(match, index) {
+            // Use exec to get all matches with better error handling
+            while ((match = curlyBraceRegex.exec(csvText)) !== null) {
+                matches.push(match[0]);
+            }
+            
+            console.log('Total curly brace matches found:', matches.length);
+            console.log('First few matches:', matches.slice(0, 3));
+            
+            if (matches.length > 0) {
+                matches.forEach(function(matchText, index) {
                     try {
-                        // Remove the curly braces and split on the first colon
-                        var content = match.substring(1, match.length - 1); // Remove { and }
+                        // Remove the curly braces
+                        var content = matchText.substring(1, matchText.length - 1); // Remove { and }
+                        console.log('Processing match ' + index + ':', content.substring(0, 100) + '...');
+                        
+                        // Look for ' :' (space + colon) separator
                         var colonIndex = content.indexOf(' :');
                         
                         if (colonIndex !== -1) {
@@ -837,31 +849,47 @@ jQuery(document).ready(function($) {
                             if (feature && description) {
                                 // Store with case-insensitive key for matching
                                 terrainFeatureDescriptions[feature.toUpperCase()] = description;
-                                console.log('Loaded GMC Terrain description for:', feature);
+                                console.log('✅ Loaded GMC Terrain description for:', feature);
                             } else {
-                                console.warn('Empty feature or description:', { feature: feature, description: description.substring(0, 50) + '...' });
+                                console.warn('❌ Empty feature or description:', { 
+                                    feature: feature, 
+                                    description: description.substring(0, 50) + '...',
+                                    hasFeature: !!feature,
+                                    hasDescription: !!description
+                                });
                             }
                         } else {
-                            console.warn('Could not find colon separator in:', content.substring(0, 100));
+                            console.warn('❌ Could not find " :" separator in:', content.substring(0, 100));
+                            // Try alternative separators
+                            var altColonIndex = content.indexOf(':');
+                            if (altColonIndex !== -1) {
+                                var altFeature = content.substring(0, altColonIndex).trim();
+                                var altDescription = content.substring(altColonIndex + 1).trim();
+                                if (altFeature && altDescription) {
+                                    terrainFeatureDescriptions[altFeature.toUpperCase()] = altDescription;
+                                    console.log('✅ Loaded GMC Terrain description (alt format) for:', altFeature);
+                                }
+                            }
                         }
                     } catch (error) {
-                        console.error('Error parsing terrain description entry:', error, match.substring(0, 100));
+                        console.error('❌ Error parsing terrain description entry:', error, matchText.substring(0, 100));
                     }
                 });
             } else {
-                console.warn('No curly brace entries found in CSV');
+                console.warn('❌ No curly brace entries found in CSV');
+                console.log('CSV content preview:', csvText.substring(0, 1000));
             }
             
             console.log('GMC Terrain Feature Descriptions loaded, features:', Object.keys(terrainFeatureDescriptions).length);
             console.log('Sample features loaded:', Object.keys(terrainFeatureDescriptions).slice(0, 5));
             console.log('All terrain features loaded:', Object.keys(terrainFeatureDescriptions));
             if (Object.keys(terrainFeatureDescriptions).length === 0) {
-                console.warn('No GMC Terrain descriptions were parsed from CSV');
+                console.warn('❌ No GMC Terrain descriptions were parsed from CSV');
             } else {
-                console.log('SUCCESS: GMC Terrain descriptions loaded successfully!');
+                console.log('✅ SUCCESS: GMC Terrain descriptions loaded successfully!');
             }
         }).catch(function(error) {
-            console.error('Fetch error for GMC Terrain Feature Descriptions:', error.message);
+            console.error('❌ Fetch error for GMC Terrain Feature Descriptions:', error.message);
             terrainFeatureDescriptions = {};
         });
     }
@@ -1259,8 +1287,29 @@ jQuery(document).ready(function($) {
                     }
                     
                     console.log('Looking for feature (uppercase):', feature.toUpperCase());
-                    // Use GMC Terrain descriptions instead of KIA descriptions (case-insensitive)
-                    var description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No GMC Terrain description available for ' + feature;
+                    
+                    // Try exact match first
+                    var description = terrainFeatureDescriptions[feature.toUpperCase()];
+                    
+                    // If no exact match, try partial matching
+                    if (!description) {
+                        console.log('No exact match found, trying partial matching...');
+                        var matchedKey = Object.keys(terrainFeatureDescriptions).find(function(key) {
+                            // Check if the key contains the feature or vice versa
+                            return key.includes(feature.toUpperCase()) || feature.toUpperCase().includes(key);
+                        });
+                        if (matchedKey) {
+                            description = terrainFeatureDescriptions[matchedKey];
+                            console.log('Found partial match:', matchedKey);
+                        }
+                    }
+                    
+                    // If still no match, provide fallback
+                    if (!description) {
+                        description = 'No GMC Terrain description available for ' + feature;
+                        console.log('No match found, using fallback description');
+                    }
+                    
                     console.log('Found description:', description);
                     console.log('=== END TERRAIN FEATURE INFO DEBUG ===');
                     showFeatureDescription(feature, description);
@@ -1678,7 +1727,29 @@ jQuery(document).ready(function($) {
             console.log('Feature to lookup:', feature);
             console.log('Feature uppercase:', feature.toUpperCase());
             console.log('Available terrain descriptions:', Object.keys(terrainFeatureDescriptions));
-            description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No description available for ' + feature;
+            
+            // Try exact match first
+            description = terrainFeatureDescriptions[feature.toUpperCase()];
+            
+            // If no exact match, try partial matching
+            if (!description) {
+                console.log('No exact match found, trying partial matching...');
+                var matchedKey = Object.keys(terrainFeatureDescriptions).find(function(key) {
+                    // Check if the key contains the feature or vice versa
+                    return key.includes(feature.toUpperCase()) || feature.toUpperCase().includes(key);
+                });
+                if (matchedKey) {
+                    description = terrainFeatureDescriptions[matchedKey];
+                    console.log('Found partial match:', matchedKey);
+                }
+            }
+            
+            // If still no match, provide fallback
+            if (!description) {
+                description = 'No GMC Terrain description available for ' + feature;
+                console.log('No match found, using fallback description');
+            }
+            
             console.log('Found description:', description);
         } else {
             description = featureDescriptions[feature] || 'No description available for ' + feature;
@@ -4891,7 +4962,45 @@ window.checkTerrainState = function() {
     console.log('Selected model:', selectedModel);
 };
 
-console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually(), checkTerrainState()');
+// Manual function to test terrain descriptions parsing
+window.testTerrainDescriptions = function() {
+    console.log('=== Testing Terrain Descriptions ===');
+    console.log('terrainFeatureDescriptions object:', terrainFeatureDescriptions);
+    console.log('Number of descriptions loaded:', Object.keys(terrainFeatureDescriptions).length);
+    console.log('Available features:', Object.keys(terrainFeatureDescriptions));
+    
+    // Test with sample content
+    var testContent = '{19" TECHNICAL GRAY MACHINED FACE ALUMINUM WHEELS :These 19-inch aluminum wheels feature a sophisticated Technical Gray finish with a machined face, giving them a sleek, modern appearance.}';
+    console.log('Testing with sample content:', testContent);
+    
+    var curlyBraceRegex = /\{([^}]+)\}/g;
+    var matches = [];
+    var match;
+    
+    while ((match = curlyBraceRegex.exec(testContent)) !== null) {
+        matches.push(match[0]);
+    }
+    
+    console.log('Matches found:', matches.length);
+    if (matches.length > 0) {
+        var content = matches[0].substring(1, matches[0].length - 1);
+        var colonIndex = content.indexOf(' :');
+        console.log('Content:', content);
+        console.log('Colon index:', colonIndex);
+        if (colonIndex !== -1) {
+            var feature = content.substring(0, colonIndex).trim();
+            var description = content.substring(colonIndex + 2).trim();
+            console.log('Parsed feature:', feature);
+            console.log('Parsed description:', description.substring(0, 100) + '...');
+        }
+    }
+    
+    // Reload descriptions
+    console.log('Reloading terrain descriptions...');
+    loadTerrainFeatureDescriptions();
+};
+
+console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually(), checkTerrainState(), testTerrainDescriptions()');
 
 // GLOBAL RADIO BUTTON LISTENER FOR DEBUGGING
 $(document).on('change', 'input[type="radio"]', function() {
