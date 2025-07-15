@@ -858,8 +858,11 @@ jQuery(document).ready(function($) {
             
             console.log('GMC Terrain Feature Descriptions loaded, features:', Object.keys(terrainFeatureDescriptions).length);
             console.log('Sample features loaded:', Object.keys(terrainFeatureDescriptions).slice(0, 5));
+            console.log('All terrain features loaded:', Object.keys(terrainFeatureDescriptions));
             if (Object.keys(terrainFeatureDescriptions).length === 0) {
                 console.warn('No GMC Terrain descriptions were parsed from CSV');
+            } else {
+                console.log('SUCCESS: GMC Terrain descriptions loaded successfully!');
             }
         }).catch(function(error) {
             console.error('Fetch error for GMC Terrain Feature Descriptions:', error.message);
@@ -1137,9 +1140,11 @@ jQuery(document).ready(function($) {
                         var divStart = '<div class="gchoice gchoice_terrain_' + globalIndex + '">';
                         var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
                         var labelTag = '<label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>';
+                        // Add feature info icon for terrain features
+                        var infoIcon = '<span class="feature-info-icon" data-feature="' + feature + '" style="margin-left: 5px; cursor: pointer; color: #007cba; font-size: 14px;">ℹ️</span>';
                         var divEnd = '</div>';
                         
-                        html += divStart + inputTag + labelTag + divEnd;
+                        html += divStart + inputTag + labelTag + infoIcon + divEnd;
                         globalIndex++;
                     });
                     html += '</div></div>';
@@ -1242,8 +1247,12 @@ jQuery(document).ready(function($) {
                     e.preventDefault();
                     e.stopPropagation();
                     var feature = $(this).data('feature');
+                    console.log('TERRAIN feature info icon clicked for:', feature);
+                    console.log('Available terrain descriptions:', Object.keys(terrainFeatureDescriptions));
+                    console.log('Looking for feature:', feature.toUpperCase());
                     // Use GMC Terrain descriptions instead of KIA descriptions (case-insensitive)
                     var description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No description available for ' + feature;
+                    console.log('Found description:', description);
                     showFeatureDescription(feature, description);
                 });
             },
