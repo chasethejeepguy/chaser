@@ -810,47 +810,47 @@ jQuery(document).ready(function($) {
     // Load GMC Terrain feature descriptions from CSV
     var terrainFeatureDescriptions = {};
     function loadTerrainFeatureDescriptions() {
-        var csvUrl = 'https://www.hutchinsonautoteam.com/gmcmodels/gmcterraindescriptions.csv';
+        var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcterrainfeaturedescriptions.csv';
         console.log('Loading GMC Terrain descriptions from:', csvUrl);
         fetchCsvWithRetry(csvUrl, 'GMC Terrain Feature Descriptions', 3, 1000).then(function(csvText) {
             console.log('GMC Terrain descriptions CSV fetched successfully, length:', csvText.length);
             console.log('First 500 characters of CSV:', csvText.substring(0, 500));
             
-            // Parse the CSV - handle complex format with escaped quotes and multi-line descriptions
+            // Parse the new CSV format with curly braces: {FEATURE_NAME :Description}
             terrainFeatureDescriptions = {};
             
-            // Split by lines and process each line
-            var lines = csvText.split('\n').filter(function(line) { return line.trim(); });
+            // Find all entries enclosed in curly braces
+            var curlyBraceRegex = /\{([^}]+)\}/g;
+            var matches = csvText.match(curlyBraceRegex);
             
-            lines.forEach(function(line, index) {
-                try {
-                    // Each line should be in format: "FEATURE NAME (DESCRIPTION)"
-                    // Handle escaped quotes in feature names (e.g., "19"" becomes 19")
-                    var match = line.match(/^"([^"]*(?:""[^"]*)*)" \((.+)\)$/);
-                    if (match) {
-                        var feature = match[1].replace(/""/g, '"').trim(); // Unescape quotes
-                        var description = match[2].trim(); // Get description
+            if (matches) {
+                matches.forEach(function(match, index) {
+                    try {
+                        // Remove the curly braces and split on the first colon
+                        var content = match.substring(1, match.length - 1); // Remove { and }
+                        var colonIndex = content.indexOf(' :');
                         
-                        // Store with case-insensitive key for matching
-                        terrainFeatureDescriptions[feature.toUpperCase()] = description;
-                        console.log('Loaded GMC Terrain description for:', feature);
-                    } else {
-                        // Try alternative parsing for entries without quotes
-                        var altMatch = line.match(/^([^(]+) \((.+)\)$/);
-                        if (altMatch) {
-                            var feature = altMatch[1].trim();
-                            var description = altMatch[2].trim();
+                        if (colonIndex !== -1) {
+                            var feature = content.substring(0, colonIndex).trim();
+                            var description = content.substring(colonIndex + 2).trim(); // +2 to skip ' :'
                             
-                            terrainFeatureDescriptions[feature.toUpperCase()] = description;
-                            console.log('Loaded GMC Terrain description (alt format) for:', feature);
+                            if (feature && description) {
+                                // Store with case-insensitive key for matching
+                                terrainFeatureDescriptions[feature.toUpperCase()] = description;
+                                console.log('Loaded GMC Terrain description for:', feature);
+                            } else {
+                                console.warn('Empty feature or description:', { feature: feature, description: description.substring(0, 50) + '...' });
+                            }
                         } else {
-                            console.warn('Could not parse terrain description line:', line.substring(0, 100));
+                            console.warn('Could not find colon separator in:', content.substring(0, 100));
                         }
+                    } catch (error) {
+                        console.error('Error parsing terrain description entry:', error, match.substring(0, 100));
                     }
-                } catch (error) {
-                    console.error('Error parsing terrain description line:', error, line.substring(0, 100));
-                }
-            });
+                });
+            } else {
+                console.warn('No curly brace entries found in CSV');
+            }
             
             console.log('GMC Terrain Feature Descriptions loaded, features:', Object.keys(terrainFeatureDescriptions).length);
             console.log('Sample features loaded:', Object.keys(terrainFeatureDescriptions).slice(0, 5));
