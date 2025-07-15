@@ -1141,7 +1141,7 @@ jQuery(document).ready(function($) {
                         var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
                         var labelTag = '<label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>';
                         // Add feature info icon for terrain features
-                        var infoIcon = '<span class="feature-info-icon" data-feature="' + feature + '" style="margin-left: 5px; cursor: pointer; color: #007cba; font-size: 14px;">ℹ️</span>';
+                        var infoIcon = '<span class="feature-info-icon terrain-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Terrain feature description">ℹ</span>';
                         var divEnd = '</div>';
                         
                         html += divStart + inputTag + labelTag + infoIcon + divEnd;
@@ -1247,12 +1247,17 @@ jQuery(document).ready(function($) {
                     e.preventDefault();
                     e.stopPropagation();
                     var feature = $(this).data('feature');
-                    console.log('TERRAIN feature info icon clicked for:', feature);
+                    console.log('=== TERRAIN FEATURE INFO ICON CLICKED ===');
+                    console.log('Feature clicked:', feature);
+                    console.log('Feature length:', feature.length);
                     console.log('Available terrain descriptions:', Object.keys(terrainFeatureDescriptions));
-                    console.log('Looking for feature:', feature.toUpperCase());
+                    console.log('Total descriptions available:', Object.keys(terrainFeatureDescriptions).length);
+                    console.log('Looking for feature (uppercase):', feature.toUpperCase());
+                    console.log('Sample descriptions:', terrainFeatureDescriptions);
                     // Use GMC Terrain descriptions instead of KIA descriptions (case-insensitive)
-                    var description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No description available for ' + feature;
+                    var description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No GMC Terrain description available for ' + feature;
                     console.log('Found description:', description);
+                    console.log('=== END TERRAIN FEATURE INFO DEBUG ===');
                     showFeatureDescription(feature, description);
                 });
             },
