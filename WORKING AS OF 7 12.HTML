@@ -1167,7 +1167,7 @@ jQuery(document).ready(function($) {
                         var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
                         var labelTag = '<label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>';
                         // Add feature info icon for terrain features
-                        var infoIcon = '<span class="feature-info-icon terrain-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Terrain feature description">ℹ</span>';
+                        var infoIcon = '<span class="feature-info-icon terrain-info-icon" data-feature="' + String(feature) + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Terrain feature description">ℹ</span>';
                         var divEnd = '</div>';
                         
                         html += divStart + inputTag + labelTag + infoIcon + divEnd;
@@ -1262,8 +1262,8 @@ jQuery(document).ready(function($) {
                         var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
                             return fuzzyMatch(key, feature, 'TERRAIN', feature);
                         });
-                        if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
-                            $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
+                        if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
+                            $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
                             console.log('Prepended info icon for feature: ' + feature);
                         }
                     }
@@ -1677,8 +1677,8 @@ jQuery(document).ready(function($) {
             var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
                 return fuzzyMatch(key, feature, model, feature);
             });
-            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
-                $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
                 console.log('Prepended info icon before TERRAIN feature: ' + feature + ', matched: ' + matchedFeature);
             }
         });
@@ -1710,8 +1710,8 @@ jQuery(document).ready(function($) {
             var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
                 return model === 'K4' ? key.toUpperCase() === feature.toUpperCase() : fuzzyMatch(key, feature, model, feature);
             });
-            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
-                $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
                 console.log('Prepended info icon before feature: ' + feature + ', matched: ' + matchedFeature);
             }
         });
