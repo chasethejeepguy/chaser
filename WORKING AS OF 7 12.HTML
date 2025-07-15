@@ -1272,7 +1272,7 @@ jQuery(document).ready(function($) {
                 htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    var feature = $(this).data('feature');
+                    var feature = $(this).attr('data-feature');
                     console.log('=== TERRAIN FEATURE INFO ICON CLICKED ===');
                     console.log('Feature clicked:', feature);
                     console.log('Feature type:', typeof feature);
@@ -1721,7 +1721,7 @@ jQuery(document).ready(function($) {
     checkboxField.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        var feature = $(this).data('feature');
+        var feature = $(this).attr('data-feature');
         // Use GMC Terrain descriptions for TERRAIN model, otherwise use KIA descriptions
         var description;
         if (model === 'TERRAIN') {
