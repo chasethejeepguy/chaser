@@ -812,7 +812,7 @@ jQuery(document).ready(function($) {
     function loadTerrainFeatureDescriptions() {
         var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcterraindescriptions.csv';
         console.log('Loading GMC Terrain descriptions from:', csvUrl);
-        fetchCsvWithRetry(csvUrl, 'GMC Terrain Feature Descriptions', 3, 1000).then(function(csvText) {
+        return fetchCsvWithRetry(csvUrl, 'GMC Terrain Feature Descriptions', 3, 1000).then(function(csvText) {
             console.log('GMC Terrain descriptions CSV fetched successfully, length:', csvText.length);
             console.log('First 500 characters of CSV:', csvText.substring(0, 500));
             
@@ -888,9 +888,11 @@ jQuery(document).ready(function($) {
             } else {
                 console.log('✅ SUCCESS: GMC Terrain descriptions loaded successfully!');
             }
+            return terrainFeatureDescriptions;
         }).catch(function(error) {
             console.error('❌ Fetch error for GMC Terrain Feature Descriptions:', error.message);
             terrainFeatureDescriptions = {};
+            throw error;
         });
     }
 
@@ -1027,6 +1029,27 @@ jQuery(document).ready(function($) {
         return;
     }
 
+    // Load terrain descriptions first if not already loaded
+    if (!terrainFeatureDescriptions || Object.keys(terrainFeatureDescriptions).length === 0) {
+        console.log('🚨 Terrain descriptions not loaded, loading first...');
+        // Load descriptions and then populate features
+        loadTerrainFeatureDescriptions().then(function() {
+            console.log('✅ Descriptions loaded, now populating features...');
+            populateTerrainFeaturesAfterDescriptions();
+        }).catch(function(error) {
+            console.error('❌ Failed to load descriptions:', error);
+            // Continue anyway with basic feature names
+            populateTerrainFeaturesAfterDescriptions();
+        });
+        return;
+    }
+    
+    populateTerrainFeaturesAfterDescriptions();
+}
+
+function populateTerrainFeaturesAfterDescriptions() {
+    console.log('=== populateTerrainFeaturesAfterDescriptions called ===');
+
     var config = modelConfigs['TERRAIN'];
     if (!config) {
         console.warn('Terrain configuration not found');
@@ -1162,12 +1185,23 @@ jQuery(document).ready(function($) {
                         }
                         window.terrainFeatureMap[simpleValue] = feature;
                         
+                        // Try to find the full feature name from terrain descriptions
+                        var fullFeatureName = feature;
+                        if (terrainFeatureDescriptions && Object.keys(terrainFeatureDescriptions).length > 0) {
+                            var matchedKey = Object.keys(terrainFeatureDescriptions).find(function(key) {
+                                return key.includes(String(feature).toUpperCase()) || String(feature).toUpperCase().includes(key);
+                            });
+                            if (matchedKey) {
+                                fullFeatureName = matchedKey;
+                            }
+                        }
+                        
                         // Build HTML using simple string concatenation to avoid any quote issues
                         var divStart = '<div class="gchoice gchoice_terrain_' + globalIndex + '">';
                         var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
-                        var labelTag = '<label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>';
-                        // Add feature info icon for terrain features
-                        var infoIcon = '<span class="feature-info-icon terrain-info-icon" data-feature="' + String(feature) + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Terrain feature description">ℹ</span>';
+                        var labelTag = '<label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + fullFeatureName + '</label>';
+                        // Add feature info icon for terrain features - use full feature name for data-feature
+                        var infoIcon = '<span class="feature-info-icon terrain-info-icon" data-feature="' + String(fullFeatureName) + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Terrain feature description">ℹ</span>';
                         var divEnd = '</div>';
                         
                         html += divStart + inputTag + labelTag + infoIcon + divEnd;
