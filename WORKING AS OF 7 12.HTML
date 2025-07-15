@@ -1112,8 +1112,10 @@ jQuery(document).ready(function($) {
                             currentCategory = firstCell.match(/\{(.+)\}/)[1];
                             // Clean up features by removing extra quotes and trimming
                             features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                // Ensure f is a string first (Papa Parse may convert numbers)
+                                var str = String(f);
                                 // Remove surrounding quotes if present
-                                var cleaned = f.trim();
+                                var cleaned = str.trim();
                                 if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
                                     cleaned = cleaned.slice(1, -1);
                                 }
@@ -1725,18 +1727,22 @@ jQuery(document).ready(function($) {
         if (model === 'TERRAIN') {
             console.log('TERRAIN model detected, using GMC descriptions');
             console.log('Feature to lookup:', feature);
-            console.log('Feature uppercase:', feature.toUpperCase());
+            
+            // Convert feature to string to avoid toUpperCase errors
+            var featureString = String(feature || '');
+            console.log('Feature as string:', featureString);
+            console.log('Feature uppercase:', featureString.toUpperCase());
             console.log('Available terrain descriptions:', Object.keys(terrainFeatureDescriptions));
             
             // Try exact match first
-            description = terrainFeatureDescriptions[feature.toUpperCase()];
+            description = terrainFeatureDescriptions[featureString.toUpperCase()];
             
             // If no exact match, try partial matching
             if (!description) {
                 console.log('No exact match found, trying partial matching...');
                 var matchedKey = Object.keys(terrainFeatureDescriptions).find(function(key) {
                     // Check if the key contains the feature or vice versa
-                    return key.includes(feature.toUpperCase()) || feature.toUpperCase().includes(key);
+                    return key.includes(featureString.toUpperCase()) || featureString.toUpperCase().includes(key);
                 });
                 if (matchedKey) {
                     description = terrainFeatureDescriptions[matchedKey];
@@ -1746,7 +1752,7 @@ jQuery(document).ready(function($) {
             
             // If still no match, provide fallback
             if (!description) {
-                description = 'No GMC Terrain description available for ' + feature;
+                description = 'No GMC Terrain description available for ' + featureString;
                 console.log('No match found, using fallback description');
             }
             
