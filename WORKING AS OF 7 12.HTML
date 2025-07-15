@@ -1432,19 +1432,51 @@ function populateTerrainFeaturesAfterDescriptions() {
                     
                     console.log('Looking for feature (uppercase):', feature.toUpperCase());
                     
-                    // Try exact match first
-                    var description = terrainFeatureDescriptions[feature.toUpperCase()];
+                    // Normalize feature name to handle common typos
+                    function normalizeFeatureName(featureName) {
+                        return featureName
+                            .replace(/INFOTAINTMENT/g, 'INFOTAINMENT')  // Fix common typo
+                            .replace(/\s+/g, ' ')                       // Normalize whitespace
+                            .trim();
+                    }
                     
-                    // If no exact match, try partial matching
+                    var normalizedFeature = normalizeFeatureName(feature.toUpperCase());
+                    console.log('Normalized feature:', normalizedFeature);
+                    
+                    // Try exact match first with normalized feature
+                    var description = terrainFeatureDescriptions[normalizedFeature];
+                    if (description) {
+                        console.log('✅ Found exact match with normalized feature:', normalizedFeature);
+                    }
+                    
+                    // If no exact match, try with original feature name
+                    if (!description) {
+                        description = terrainFeatureDescriptions[feature.toUpperCase()];
+                        if (description) {
+                            console.log('✅ Found exact match with original feature:', feature.toUpperCase());
+                        }
+                    }
+                    
+                    // If still no match, try partial matching with normalized names
                     if (!description) {
                         console.log('No exact match found, trying partial matching...');
+                        console.log('Searching for normalized feature:', normalizedFeature);
                         var matchedKey = Object.keys(terrainFeatureDescriptions).find(function(key) {
-                            // Check if the key contains the feature or vice versa
-                            return key.includes(feature.toUpperCase()) || feature.toUpperCase().includes(key);
+                            var normalizedKey = normalizeFeatureName(key);
+                            var keyContainsFeature = normalizedKey.includes(normalizedFeature);
+                            var featureContainsKey = normalizedFeature.includes(normalizedKey);
+                            
+                            if (keyContainsFeature || featureContainsKey) {
+                                console.log('Partial match candidate:', key, '(normalized:', normalizedKey, ')');
+                                return true;
+                            }
+                            return false;
                         });
                         if (matchedKey) {
                             description = terrainFeatureDescriptions[matchedKey];
-                            console.log('Found partial match:', matchedKey);
+                            console.log('✅ Found partial match:', matchedKey);
+                        } else {
+                            console.log('❌ No partial match found');
                         }
                     }
                     
@@ -1948,19 +1980,51 @@ function populateTerrainFeaturesAfterDescriptions() {
                         
                         console.log('Looking for feature (uppercase):', feature.toUpperCase());
                         
-                        // Try exact match first
-                        var description = acadiaFeatureDescriptions[feature.toUpperCase()];
+                        // Normalize feature name to handle common typos
+                        function normalizeFeatureName(featureName) {
+                            return featureName
+                                .replace(/INFOTAINTMENT/g, 'INFOTAINMENT')  // Fix common typo
+                                .replace(/\s+/g, ' ')                       // Normalize whitespace
+                                .trim();
+                        }
                         
-                        // If no exact match, try partial matching
+                        var normalizedFeature = normalizeFeatureName(feature.toUpperCase());
+                        console.log('Normalized feature:', normalizedFeature);
+                        
+                        // Try exact match first with normalized feature
+                        var description = acadiaFeatureDescriptions[normalizedFeature];
+                        if (description) {
+                            console.log('✅ Found exact match with normalized feature:', normalizedFeature);
+                        }
+                        
+                        // If no exact match, try with original feature name
+                        if (!description) {
+                            description = acadiaFeatureDescriptions[feature.toUpperCase()];
+                            if (description) {
+                                console.log('✅ Found exact match with original feature:', feature.toUpperCase());
+                            }
+                        }
+                        
+                        // If still no match, try partial matching with normalized names
                         if (!description) {
                             console.log('No exact match found, trying partial matching...');
+                            console.log('Searching for normalized feature:', normalizedFeature);
                             var matchedKey = Object.keys(acadiaFeatureDescriptions).find(function(key) {
-                                // Check if the key contains the feature or vice versa
-                                return key.includes(feature.toUpperCase()) || feature.toUpperCase().includes(key);
+                                var normalizedKey = normalizeFeatureName(key);
+                                var keyContainsFeature = normalizedKey.includes(normalizedFeature);
+                                var featureContainsKey = normalizedFeature.includes(normalizedKey);
+                                
+                                if (keyContainsFeature || featureContainsKey) {
+                                    console.log('Partial match candidate:', key, '(normalized:', normalizedKey, ')');
+                                    return true;
+                                }
+                                return false;
                             });
                             if (matchedKey) {
                                 description = acadiaFeatureDescriptions[matchedKey];
-                                console.log('Found partial match:', matchedKey);
+                                console.log('✅ Found partial match:', matchedKey);
+                            } else {
+                                console.log('❌ No partial match found');
                             }
                         }
                         
