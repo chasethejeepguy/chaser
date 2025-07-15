@@ -635,6 +635,7 @@ jQuery(document).ready(function($) {
     var featureDescriptions = {};
     var trimLevelsData = {};
     var terrainPopulated = false;
+    var acadiaPopulated = false;
 
     // Model to field ID, CSV URL, and model filter mappings
     var modelConfigs = {
@@ -1737,176 +1738,7 @@ function populateTerrainFeaturesAfterDescriptions() {
 		trimLevelsData[model] = matchingTrimLevels;
 	}
 
-	function updateTrimLevels(model) {
-    var config = modelConfigs[model];
-    if (!config) {
-        console.warn('Model configuration not found for: ' + model);
-        return;
-    }
-    var checkboxField, htmlBlock, trimLevelsButtonBlock;
-    
-    if (model === 'TERRAIN') {
-        // For TERRAIN, checkboxes are in field 137 (HTML block)
-        checkboxField = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
-        if (!checkboxField.length) {
-            checkboxField = $('#field_' + formId + '_137');
-        }
-        if (!checkboxField.length) {
-            checkboxField = $('[id*="137"]').filter(function() {
-                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
-            });
-        }
-        
-        console.log('TERRAIN checkboxField debug:', {
-            terrainHtmlBlockFieldId: terrainHtmlBlockFieldId,
-            selector1: '#field_' + formId + '_' + terrainHtmlBlockFieldId,
-            selector2: '#field_' + formId + '_137',
-            found: checkboxField.length,
-            actualId: checkboxField.attr('id'),
-            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
-        });
-        
-        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
-        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
-    } else if (model === 'ACADIA') {
-        // For ACADIA, checkboxes are in field 138 (HTML block)
-        checkboxField = $('#field_' + formId + '_' + acadiaHtmlBlockFieldId);
-        if (!checkboxField.length) {
-            checkboxField = $('#field_' + formId + '_138');
-        }
-        if (!checkboxField.length) {
-            checkboxField = $('[id*="138"]').filter(function() {
-                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
-            });
-        }
-        
-        console.log('ACADIA checkboxField debug:', {
-            acadiaHtmlBlockFieldId: acadiaHtmlBlockFieldId,
-            selector1: '#field_' + formId + '_' + acadiaHtmlBlockFieldId,
-            selector2: '#field_' + formId + '_138',
-            found: checkboxField.length,
-            actualId: checkboxField.attr('id'),
-            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
-        });
-        
-        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
-        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
-    } else {
-        // For other models, checkboxes are in their respective fields
-        checkboxField = $('#field_' + formId + '_' + config.fieldId);
-        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
-        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
-    }
-    
-    var defaultText = 'Wonderful, it sounds like the {TRIM LEVELS} would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
-    var defaultButtonText = '<button id="viewTrimLevelsButton">View Trim Levels</button>';
-    var noMatchText = 'No matching trim levels found. Please adjust your feature selections or contact support.';
-
-    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : model === 'ACADIA' ? acadiaHtmlBlockFieldId : config.fieldId) + '):', {
-        fieldExists: checkboxField.length > 0,
-        fieldVisible: checkboxField.is(':visible'),
-        fieldClasses: checkboxField.attr('class'),
-        fieldStyle: checkboxField.attr('style'),
-        checkboxCount: checkboxField.find('input[type="checkbox"]').length,
-        domStructure: checkboxField.html().substring(0, 500)
-    });
-
-    // Ensure feature info icons are prepended before feature labels
-    if (model === 'TERRAIN') {
-        // For TERRAIN, handle the different structure
-        checkboxField.find('.gchoice').each(function() {
-            var $div = $(this);
-            var $input = $div.find('input[type="checkbox"]');
-            var $label = $div.find('label');
-            var feature = $input.attr('value') || '';
-            
-            if (!feature || !$input.length) {
-                console.warn('Invalid TERRAIN checkbox structure in field (ID: ' + terrainHtmlBlockFieldId + ')', {
-                    feature: feature,
-                    inputExists: $input.length > 0,
-                    labelExists: $label.length > 0,
-                    divHtml: $div.html(),
-                    inputId: $input.attr('id'),
-                    labelClasses: $label.attr('class'),
-                    parentClasses: $div.attr('class')
-                });
-                return;
-            }
-            
-            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
-                return fuzzyMatch(key, feature, model, feature);
-            });
-            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
-                $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
-                console.log('Prepended info icon before TERRAIN feature: ' + feature + ', matched: ' + matchedFeature);
-            }
-        });
-    } else if (model === 'ACADIA') {
-        // For ACADIA, handle the different structure
-        checkboxField.find('.gchoice').each(function() {
-            var $div = $(this);
-            var $input = $div.find('input[type="checkbox"]');
-            var $label = $div.find('label');
-            var feature = $input.attr('value') || '';
-            
-            if (!feature || !$input.length) {
-                console.warn('Invalid ACADIA checkbox structure in field (ID: ' + acadiaHtmlBlockFieldId + ')', {
-                    feature: feature,
-                    inputExists: $input.length > 0,
-                    labelExists: $label.length > 0,
-                    divHtml: $div.html(),
-                    inputId: $input.attr('id'),
-                    labelClasses: $label.attr('class'),
-                    parentClasses: $div.attr('class')
-                });
-                return;
-            }
-            
-            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
-                return fuzzyMatch(key, feature, model, feature);
-            });
-            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
-                $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
-                console.log('Prepended info icon before ACADIA feature: ' + feature + ', matched: ' + matchedFeature);
-            }
-        });
-    } else {
-        // For other models, use existing logic
-        checkboxField.find('.gfield_checkbox > div, .gfield-choice-wrapper').each(function() {
-            var $div = $(this);
-            var $input = $div.find('input[type="checkbox"]');
-            var $label = $div.find('label, .gfield-choice-label');
-            var feature = '';
-            if ($label.length) {
-                feature = $label.contents().filter(function() {
-                    return this.nodeType === 3; // Text nodes only, excludes .feature-info-icon
-                }).text().trim();
-            }
-            if (!feature || !$input.length) {
-                console.warn('Invalid checkbox structure in field (ID: ' + config.fieldId + ')', {
-                    feature: feature,
-                    inputExists: $input.length > 0,
-                    labelExists: $label.length > 0,
-                    divHtml: $div.html(),
-                    inputId: $input.attr('id'),
-                    labelClasses: $label.attr('class'),
-                    parentClasses: $div.attr('class'),
-                    parentHtml: $div.parent().html().substring(0, 500)
-                });
-                return;
-            }
-            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
-                return model === 'K4' ? key.toUpperCase() === feature.toUpperCase() : fuzzyMatch(key, feature, model, feature);
-            });
-            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
-                $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
-                console.log('Prepended info icon before feature: ' + feature + ', matched: ' + matchedFeature);
-            }
-        });
-    }
-
     // Populate GMC Acadia features
-    var acadiaPopulated = false;
     function populateAcadiaFeatures() {
         console.log('=== populateAcadiaFeatures called ===');
         console.log('Current acadiaPopulated flag:', acadiaPopulated);
@@ -2135,6 +1967,174 @@ function populateTerrainFeaturesAfterDescriptions() {
             },
             error: function(error) {
                 console.error('❌ Error parsing Acadia CSV:', error);
+            }
+        });
+    }
+
+	function updateTrimLevels(model) {
+    var config = modelConfigs[model];
+    if (!config) {
+        console.warn('Model configuration not found for: ' + model);
+        return;
+    }
+    var checkboxField, htmlBlock, trimLevelsButtonBlock;
+    
+    if (model === 'TERRAIN') {
+        // For TERRAIN, checkboxes are in field 137 (HTML block)
+        checkboxField = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
+        if (!checkboxField.length) {
+            checkboxField = $('#field_' + formId + '_137');
+        }
+        if (!checkboxField.length) {
+            checkboxField = $('[id*="137"]').filter(function() {
+                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+            });
+        }
+        
+        console.log('TERRAIN checkboxField debug:', {
+            terrainHtmlBlockFieldId: terrainHtmlBlockFieldId,
+            selector1: '#field_' + formId + '_' + terrainHtmlBlockFieldId,
+            selector2: '#field_' + formId + '_137',
+            found: checkboxField.length,
+            actualId: checkboxField.attr('id'),
+            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
+        });
+        
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    } else if (model === 'ACADIA') {
+        // For ACADIA, checkboxes are in field 138 (HTML block)
+        checkboxField = $('#field_' + formId + '_' + acadiaHtmlBlockFieldId);
+        if (!checkboxField.length) {
+            checkboxField = $('#field_' + formId + '_138');
+        }
+        if (!checkboxField.length) {
+            checkboxField = $('[id*="138"]').filter(function() {
+                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+            });
+        }
+        
+        console.log('ACADIA checkboxField debug:', {
+            acadiaHtmlBlockFieldId: acadiaHtmlBlockFieldId,
+            selector1: '#field_' + formId + '_' + acadiaHtmlBlockFieldId,
+            selector2: '#field_' + formId + '_138',
+            found: checkboxField.length,
+            actualId: checkboxField.attr('id'),
+            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
+        });
+        
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    } else {
+        // For other models, checkboxes are in their respective fields
+        checkboxField = $('#field_' + formId + '_' + config.fieldId);
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    }
+    
+    var defaultText = 'Wonderful, it sounds like the {TRIM LEVELS} would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
+    var defaultButtonText = '<button id="viewTrimLevelsButton">View Trim Levels</button>';
+    var noMatchText = 'No matching trim levels found. Please adjust your feature selections or contact support.';
+
+    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : model === 'ACADIA' ? acadiaHtmlBlockFieldId : config.fieldId) + '):', {
+        fieldExists: checkboxField.length > 0,
+        fieldVisible: checkboxField.is(':visible'),
+        fieldClasses: checkboxField.attr('class'),
+        fieldStyle: checkboxField.attr('style'),
+        checkboxCount: checkboxField.find('input[type="checkbox"]').length,
+        domStructure: checkboxField.html().substring(0, 500)
+    });
+
+    // Ensure feature info icons are prepended before feature labels
+    if (model === 'TERRAIN') {
+        // For TERRAIN, handle the different structure
+        checkboxField.find('.gchoice').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label');
+            var feature = $input.attr('value') || '';
+            
+            if (!feature || !$input.length) {
+                console.warn('Invalid TERRAIN checkbox structure in field (ID: ' + terrainHtmlBlockFieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class')
+                });
+                return;
+            }
+            
+            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
+                return fuzzyMatch(key, feature, model, feature);
+            });
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
+                console.log('Prepended info icon before TERRAIN feature: ' + feature + ', matched: ' + matchedFeature);
+            }
+        });
+    } else if (model === 'ACADIA') {
+        // For ACADIA, handle the different structure
+        checkboxField.find('.gchoice').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label');
+            var feature = $input.attr('value') || '';
+            
+            if (!feature || !$input.length) {
+                console.warn('Invalid ACADIA checkbox structure in field (ID: ' + acadiaHtmlBlockFieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class')
+                });
+                return;
+            }
+            
+            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
+                return fuzzyMatch(key, feature, model, feature);
+            });
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
+                console.log('Prepended info icon before ACADIA feature: ' + feature + ', matched: ' + matchedFeature);
+            }
+        });
+    } else {
+        // For other models, use existing logic
+        checkboxField.find('.gfield_checkbox > div, .gfield-choice-wrapper').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label, .gfield-choice-label');
+            var feature = '';
+            if ($label.length) {
+                feature = $label.contents().filter(function() {
+                    return this.nodeType === 3; // Text nodes only, excludes .feature-info-icon
+                }).text().trim();
+            }
+            if (!feature || !$input.length) {
+                console.warn('Invalid checkbox structure in field (ID: ' + config.fieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class'),
+                    parentHtml: $div.parent().html().substring(0, 500)
+                });
+                return;
+            }
+            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
+                return model === 'K4' ? key.toUpperCase() === feature.toUpperCase() : fuzzyMatch(key, feature, model, feature);
+            });
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
+                console.log('Prepended info icon before feature: ' + feature + ', matched: ' + matchedFeature);
             }
         });
     }
