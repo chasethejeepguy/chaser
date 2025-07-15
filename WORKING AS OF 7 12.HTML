@@ -1874,7 +1874,7 @@ jQuery(document).ready(function($) {
                             e.preventDefault();
                             console.log('View Trim Levels button clicked for ' + model);
                             console.log('Trim levels being passed:', trimLevels);
-                            console.log('Model filter being passed:', config.modelFilter);
+                            console.log('Model filter being passed:', model);
                             
                             // Ensure trimLevels is defined and is an array
                             var safeTrimLevels = Array.isArray(trimLevels) ? trimLevels : [];
@@ -1884,7 +1884,7 @@ jQuery(document).ready(function($) {
                                 return;
                             }
                             
-                            showTrimLevelsPopup(model, safeTrimLevels, config.modelFilter);
+                            showTrimLevelsPopup(model, safeTrimLevels, model);
                         });
                         console.log('View Trim Levels button initialized for ' + model);
                     } else {
