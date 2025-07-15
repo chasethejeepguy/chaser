@@ -2157,9 +2157,41 @@ function populateTerrainFeaturesAfterDescriptions() {
                 htmlBlock.html(html);
                 
                 // Bind click event for trim levels button
-                $('#viewAcadiaTrimLevelsButton').off('click').on('click', function() {
+                $('#viewAcadiaTrimLevelsButton').off('click').on('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Prevent multiple rapid clicks
+                    var button = $(this);
+                    if (button.data('loading')) {
+                        console.log('ACADIA View Trim Levels button already loading, ignoring click');
+                        return;
+                    }
+                    
+                    button.data('loading', true);
+                    button.prop('disabled', true);
+                    var originalText = button.text();
+                    button.text('Loading...');
+                    
                     console.log('ACADIA View Trim Levels button clicked');
-                    showTrimLevelsPopup(model, matchingTrimLevels, model);
+                    console.log('ACADIA Trim levels data:', {
+                        model: model,
+                        matchingTrimLevels: matchingTrimLevels,
+                        modelFilter: model
+                    });
+                    
+                    try {
+                        showTrimLevelsPopup(model, matchingTrimLevels, model);
+                    } catch (error) {
+                        console.error('Error showing ACADIA trim levels popup:', error);
+                        alert('Error: Unable to open trim levels popup. Please try again.');
+                    }
+                    
+                    // Reset button state after a delay
+                    setTimeout(function() {
+                        button.data('loading', false);
+                        button.prop('disabled', false);
+                        button.text(originalText);
+                    }, 2000);
                 });
             } else {
                 htmlBlock.html('<p>No matching trim levels found. Please adjust your feature selections.</p>');
@@ -3798,14 +3830,15 @@ function initFormBindings() {
      * Meets line requirement.
      */
 	function showTrimLevelsPopup(model, trimLevels, modelFilter) {
-    $('#trimLevelsPopup, #trimLevelsOverlay').remove();
+    try {
+        $('#trimLevelsPopup, #trimLevelsOverlay').remove();
 
-    // Safety check for parameters
-    if (!model) {
-        console.error('showTrimLevelsPopup: model parameter is required');
-        alert('Error: Model information is missing. Please refresh the page and try again.');
-        return;
-    }
+        // Safety check for parameters
+        if (!model) {
+            console.error('showTrimLevelsPopup: model parameter is required');
+            alert('Error: Model information is missing. Please refresh the page and try again.');
+            return;
+        }
     
     if (!Array.isArray(trimLevels) || trimLevels.length === 0) {
         console.error('showTrimLevelsPopup: trimLevels must be a non-empty array', {
@@ -4025,13 +4058,116 @@ function initFormBindings() {
             },
             error: function(error) {
                 console.error('Papa Parse error for New Inventory CSV: ' + error);
-                alert('Error: Failed to parse new inventory data. Please contact support.');
+                console.error('CSV parsing failed for trim levels popup');
+                
+                // Create a fallback popup with error message
+                var fallbackPopupHtml = '\
+                    <div id="trimLevelsPopup">\
+                        <div id="trimLevelsPopupContent">\
+                            <div class="trim-header">\
+                                <h2>Trim Levels for ' + modelFilter + '</h2>\
+                            </div>\
+                            <div style="padding: 20px; text-align: center;">\
+                                <p style="margin-bottom: 20px;">⚠️ Unable to parse inventory data at this time.</p>\
+                                <p style="margin-bottom: 20px;">The following trim levels are available for your selected features:</p>\
+                                <ul style="list-style: none; padding: 0; margin: 0;">' +
+                                    trimLevels.map(function(trim) {
+                                        return '<li style="padding: 8px; margin: 4px 0; background: #f0f0f0; border-radius: 4px;"><strong>' + trim + '</strong></li>';
+                                    }).join('') +
+                                '</ul>\
+                                <p style="margin-top: 20px; font-size: 0.9em; color: #666;">Please contact us directly for current inventory availability.</p>\
+                            </div>\
+                        </div>\
+                        <button type="button" class="trim-close-popup">Close</button>\
+                    </div>\
+                    <div id="trimLevelsOverlay"></div>';
+                
+                $('body').append(fallbackPopupHtml);
+                
+                var popup = $('#trimLevelsPopup');
+                var overlay = $('#trimLevelsOverlay');
+                
+                // Add event handlers for the fallback popup
+                var popupCreationTime = Date.now();
+                setTimeout(function() {
+                    overlay.on('click', function(e) {
+                        var timeSinceCreation = Date.now() - popupCreationTime;
+                        if (e.target.id === 'trimLevelsOverlay' && timeSinceCreation > 300) {
+                            console.log('Fallback trim levels overlay clicked (parse error), closing popup');
+                            $('#trimLevelsPopup, #trimLevelsOverlay').remove();
+                        }
+                    });
+                }, 100);
+                
+                popup.find('.trim-close-popup').on('click', function() {
+                    console.log('Fallback trim levels close button clicked (parse error), closing popup');
+                    $('#trimLevelsPopup, #trimLevelsOverlay').remove();
+                });
+                
+                console.log('Fallback trim levels popup created for ' + model + ' due to CSV parse error');
             }
         });
     }).catch(function(error) {
         console.error('Fetch error for New Inventory CSV: ' + error.message);
-        alert('Error: Unable to load new inventory data. Please check the CSV file at ' + csvUrl + ' or contact support.');
+        console.error('Full error object:', error);
+        
+        // Create a fallback popup with error message
+        var fallbackPopupHtml = '\
+            <div id="trimLevelsPopup">\
+                <div id="trimLevelsPopupContent">\
+                    <div class="trim-header">\
+                        <h2>Trim Levels for ' + modelFilter + '</h2>\
+                    </div>\
+                    <div style="padding: 20px; text-align: center;">\
+                        <p style="margin-bottom: 20px;">⚠️ Unable to load inventory data at this time.</p>\
+                        <p style="margin-bottom: 20px;">The following trim levels are available for your selected features:</p>\
+                        <ul style="list-style: none; padding: 0; margin: 0;">' +
+                            trimLevels.map(function(trim) {
+                                return '<li style="padding: 8px; margin: 4px 0; background: #f0f0f0; border-radius: 4px;"><strong>' + trim + '</strong></li>';
+                            }).join('') +
+                        '</ul>\
+                        <p style="margin-top: 20px; font-size: 0.9em; color: #666;">Please contact us directly for current inventory availability.</p>\
+                    </div>\
+                </div>\
+                <button type="button" class="trim-close-popup">Close</button>\
+            </div>\
+            <div id="trimLevelsOverlay"></div>';
+        
+        $('body').append(fallbackPopupHtml);
+        
+        var popup = $('#trimLevelsPopup');
+        var overlay = $('#trimLevelsOverlay');
+        
+        // Add event handlers for the fallback popup
+        var popupCreationTime = Date.now();
+        setTimeout(function() {
+            overlay.on('click', function(e) {
+                var timeSinceCreation = Date.now() - popupCreationTime;
+                if (e.target.id === 'trimLevelsOverlay' && timeSinceCreation > 300) {
+                    console.log('Fallback trim levels overlay clicked, closing popup');
+                    $('#trimLevelsPopup, #trimLevelsOverlay').remove();
+                }
+            });
+        }, 100);
+        
+        popup.find('.trim-close-popup').on('click', function() {
+            console.log('Fallback trim levels close button clicked, closing popup');
+            $('#trimLevelsPopup, #trimLevelsOverlay').remove();
+        });
+        
+                 console.log('Fallback trim levels popup created for ' + model + ' due to CSV fetch error');
     });
+    
+    } catch (globalError) {
+        console.error('Critical error in showTrimLevelsPopup:', globalError);
+        console.error('Parameters:', { model: model, trimLevels: trimLevels, modelFilter: modelFilter });
+        
+        // Remove any existing popups
+        $('#trimLevelsPopup, #trimLevelsOverlay').remove();
+        
+        // Show a simple error message
+        alert('Error: Unable to display trim levels popup. Please try again or contact support.');
+    }
 }
 
 function sortTable(columnIndex, isAsc) {
