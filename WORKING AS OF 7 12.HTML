@@ -622,6 +622,8 @@ jQuery(document).ready(function($) {
     var gmcModelFieldId = 107;
     var terrainCheckboxFieldId = 129;
     var terrainHtmlBlockFieldId = 137;
+    var acadiaCheckboxFieldId = 130;
+    var acadiaHtmlBlockFieldId = 138;
 
     // Global variables
     var vehicleData = null;
@@ -651,7 +653,8 @@ jQuery(document).ready(function($) {
         'SPORTAGE': { fieldId: sportageCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/kiamodels/SPORTAGE.csv', modelFilter: 'Sportage' },
         'SPORTAGE-HYBRID': { fieldId: sportageHybridCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/kiamodels/SPORTAGE-HYBRID.csv', modelFilter: 'Sportage Hybrid' },
         'TELLURIDE': { fieldId: tellurideCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/kiamodels/TELLURIDE.csv', modelFilter: 'Telluride' },
-        'TERRAIN': { fieldId: terrainCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/terrain.csv', modelFilter: 'Terrain', isGmc: true }
+        'TERRAIN': { fieldId: terrainCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/terrain.csv', modelFilter: 'Terrain', isGmc: true },
+        'ACADIA': { fieldId: acadiaCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/acadia.csv', modelFilter: 'Acadia', isGmc: true }
     };
 
     // Email mappings
@@ -892,6 +895,94 @@ jQuery(document).ready(function($) {
         }).catch(function(error) {
             console.error('❌ Fetch error for GMC Terrain Feature Descriptions:', error.message);
             terrainFeatureDescriptions = {};
+            throw error;
+        });
+    }
+
+    // Load GMC Acadia feature descriptions from CSV
+    var acadiaFeatureDescriptions = {};
+    function loadAcadiaFeatureDescriptions() {
+        var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcacadiadescriptions.csv';
+        console.log('Loading GMC Acadia descriptions from:', csvUrl);
+        return fetchCsvWithRetry(csvUrl, 'GMC Acadia Feature Descriptions', 3, 1000).then(function(csvText) {
+            console.log('GMC Acadia descriptions CSV fetched successfully, length:', csvText.length);
+            console.log('First 500 characters of CSV:', csvText.substring(0, 500));
+            
+            // Parse the new CSV format with curly braces: {FEATURE_NAME :Description}
+            acadiaFeatureDescriptions = {};
+            
+            // Find all entries enclosed in curly braces - more robust regex
+            var curlyBraceRegex = /\{([^}]+)\}/g;
+            var matches = [];
+            var match;
+            
+            // Use exec to get all matches with better error handling
+            while ((match = curlyBraceRegex.exec(csvText)) !== null) {
+                matches.push(match[0]);
+            }
+            
+            console.log('📊 Found', matches.length, 'GMC Acadia description entries');
+            
+            if (matches.length > 0) {
+                matches.forEach(function(matchText, index) {
+                    try {
+                        // Remove outer curly braces
+                        var content = matchText.slice(1, -1);
+                        
+                        // Look for ' :' (space + colon) separator
+                        var colonIndex = content.indexOf(' :');
+                        
+                        if (colonIndex !== -1) {
+                            var feature = content.substring(0, colonIndex).trim();
+                            var description = content.substring(colonIndex + 2).trim(); // +2 to skip ' :'
+                            
+                            if (feature && description) {
+                                // Store with case-insensitive key for matching
+                                acadiaFeatureDescriptions[feature.toUpperCase()] = description;
+                                console.log('✅ Loaded GMC Acadia description for:', feature);
+                            } else {
+                                console.warn('❌ Empty feature or description:', { 
+                                    feature: feature, 
+                                    description: description.substring(0, 50) + '...',
+                                    hasFeature: !!feature,
+                                    hasDescription: !!description
+                                });
+                            }
+                        } else {
+                            console.warn('❌ Could not find " :" separator in:', content.substring(0, 100));
+                            
+                            // Try fallback with just ':' separator
+                            var altColonIndex = content.indexOf(':');
+                            if (altColonIndex !== -1) {
+                                var altFeature = content.substring(0, altColonIndex).trim();
+                                var altDescription = content.substring(altColonIndex + 1).trim();
+                                if (altFeature && altDescription) {
+                                    acadiaFeatureDescriptions[altFeature.toUpperCase()] = altDescription;
+                                    console.log('✅ Loaded GMC Acadia description (alt format) for:', altFeature);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Error parsing acadia description entry:', error, matchText.substring(0, 100));
+                    }
+                });
+            } else {
+                console.warn('❌ No curly brace entries found in CSV');
+                console.log('CSV content preview:', csvText.substring(0, 1000));
+            }
+            
+            console.log('GMC Acadia Feature Descriptions loaded, features:', Object.keys(acadiaFeatureDescriptions).length);
+            console.log('Sample features loaded:', Object.keys(acadiaFeatureDescriptions).slice(0, 5));
+            console.log('All acadia features loaded:', Object.keys(acadiaFeatureDescriptions));
+            if (Object.keys(acadiaFeatureDescriptions).length === 0) {
+                console.warn('❌ No GMC Acadia descriptions were parsed from CSV');
+            } else {
+                console.log('✅ SUCCESS: GMC Acadia descriptions loaded successfully!');
+            }
+            return acadiaFeatureDescriptions;
+        }).catch(function(error) {
+            console.error('❌ Fetch error for GMC Acadia Feature Descriptions:', error.message);
+            acadiaFeatureDescriptions = {};
             throw error;
         });
     }
@@ -1677,6 +1768,29 @@ function populateTerrainFeaturesAfterDescriptions() {
         
         htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
         trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    } else if (model === 'ACADIA') {
+        // For ACADIA, checkboxes are in field 138 (HTML block)
+        checkboxField = $('#field_' + formId + '_' + acadiaHtmlBlockFieldId);
+        if (!checkboxField.length) {
+            checkboxField = $('#field_' + formId + '_138');
+        }
+        if (!checkboxField.length) {
+            checkboxField = $('[id*="138"]').filter(function() {
+                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+            });
+        }
+        
+        console.log('ACADIA checkboxField debug:', {
+            acadiaHtmlBlockFieldId: acadiaHtmlBlockFieldId,
+            selector1: '#field_' + formId + '_' + acadiaHtmlBlockFieldId,
+            selector2: '#field_' + formId + '_138',
+            found: checkboxField.length,
+            actualId: checkboxField.attr('id'),
+            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
+        });
+        
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
     } else {
         // For other models, checkboxes are in their respective fields
         checkboxField = $('#field_' + formId + '_' + config.fieldId);
@@ -1688,7 +1802,7 @@ function populateTerrainFeaturesAfterDescriptions() {
     var defaultButtonText = '<button id="viewTrimLevelsButton">View Trim Levels</button>';
     var noMatchText = 'No matching trim levels found. Please adjust your feature selections or contact support.';
 
-    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : config.fieldId) + '):', {
+    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : model === 'ACADIA' ? acadiaHtmlBlockFieldId : config.fieldId) + '):', {
         fieldExists: checkboxField.length > 0,
         fieldVisible: checkboxField.is(':visible'),
         fieldClasses: checkboxField.attr('class'),
@@ -1727,6 +1841,35 @@ function populateTerrainFeaturesAfterDescriptions() {
                 console.log('Prepended info icon before TERRAIN feature: ' + feature + ', matched: ' + matchedFeature);
             }
         });
+    } else if (model === 'ACADIA') {
+        // For ACADIA, handle the different structure
+        checkboxField.find('.gchoice').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label');
+            var feature = $input.attr('value') || '';
+            
+            if (!feature || !$input.length) {
+                console.warn('Invalid ACADIA checkbox structure in field (ID: ' + acadiaHtmlBlockFieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class')
+                });
+                return;
+            }
+            
+            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
+                return fuzzyMatch(key, feature, model, feature);
+            });
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
+                console.log('Prepended info icon before ACADIA feature: ' + feature + ', matched: ' + matchedFeature);
+            }
+        });
     } else {
         // For other models, use existing logic
         checkboxField.find('.gfield_checkbox > div, .gfield-choice-wrapper').each(function() {
@@ -1762,12 +1905,246 @@ function populateTerrainFeaturesAfterDescriptions() {
         });
     }
 
+    // Populate GMC Acadia features
+    var acadiaPopulated = false;
+    function populateAcadiaFeatures() {
+        console.log('=== populateAcadiaFeatures called ===');
+        console.log('Current acadiaPopulated flag:', acadiaPopulated);
+        console.log('Form ID:', formId);
+        console.log('acadiaHtmlBlockFieldId:', acadiaHtmlBlockFieldId);
+        
+        if (acadiaPopulated) {
+            console.log('Acadia features already populated, skipping');
+            return;
+        }
+
+        // Load acadia descriptions first if not already loaded
+        if (!acadiaFeatureDescriptions || Object.keys(acadiaFeatureDescriptions).length === 0) {
+            console.log('🚨 Acadia descriptions not loaded, loading first...');
+            // Load descriptions and then populate features
+            loadAcadiaFeatureDescriptions().then(function() {
+                console.log('✅ Descriptions loaded, now populating features...');
+                populateAcadiaFeaturesAfterDescriptions();
+            }).catch(function(error) {
+                console.error('❌ Failed to load descriptions:', error);
+                // Continue anyway with basic feature names
+                populateAcadiaFeaturesAfterDescriptions();
+            });
+            return;
+        }
+        
+        populateAcadiaFeaturesAfterDescriptions();
+    }
+
+    function populateAcadiaFeaturesAfterDescriptions() {
+        console.log('=== populateAcadiaFeaturesAfterDescriptions called ===');
+
+        var config = modelConfigs['ACADIA'];
+        if (!config) {
+            console.warn('Acadia configuration not found');
+            return;
+        }
+
+        var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/acadia.csv';
+        
+        console.log('Loading acadia features from:', csvUrl);
+        Papa.parse(csvUrl, {
+            download: true,
+            header: false,
+            skipEmptyLines: true,
+            complete: function(results) {
+                console.log('Acadia CSV parsed for population, rows: ' + results.data.length);
+                console.log('First few rows:', results.data.slice(0, 3));
+                
+                var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+                var featureGroups = {};
+                var currentCategory = null;
+                var features = [];
+
+                results.data.forEach(function(row, rowIndex) {
+                    if (row.length > 0) {
+                        var firstCell = row[0] ? row[0].trim() : '';
+                        if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+                            if (currentCategory && features.length > 0) {
+                                featureGroups[currentCategory] = features;
+                                console.log('Stored category: ' + currentCategory + ' with ' + features.length + ' features');
+                            }
+                            currentCategory = firstCell.match(/\{(.+)\}/)[1];
+                            // Clean up features by removing extra quotes and trimming
+                            features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                // Ensure f is a string first (Papa Parse may convert numbers)
+                                var str = String(f);
+                                // Remove surrounding quotes if present
+                                var cleaned = str.trim();
+                                if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                    cleaned = cleaned.slice(1, -1);
+                                }
+                                // Handle double quotes inside the string (CSV escape format)
+                                cleaned = cleaned.replace(/""/g, '"');
+                                return cleaned;
+                            });
+                            console.log('Row ' + rowIndex + ': Parsed category: ' + currentCategory + ', features: ' + features.length);
+                            console.log('Features for ' + currentCategory + ':', features.slice(0, 5)); // Show first 5 features
+                            console.log('Raw features before cleaning:', row.slice(1, 6)); // Show raw features
+                        }
+                    }
+                });
+                if (currentCategory && features.length > 0) {
+                    featureGroups[currentCategory] = features;
+                    console.log('Final stored category: ' + currentCategory + ' with ' + features.length + ' features');
+                }
+
+                console.log('Feature groups summary:', Object.keys(featureGroups).map(function(cat) {
+                    return cat + ': ' + featureGroups[cat].length + ' features';
+                }));
+
+                if (Object.keys(featureGroups).length !== 5) {
+                    console.error('Expected 5 categories, found: ' + Object.keys(featureGroups).length);
+                    console.error('Found categories:', Object.keys(featureGroups));
+                    return;
+                }
+
+                console.log('Building HTML for acadia features...');
+                var html = '<div class="feature-groups">';
+                var globalIndex = 0;
+                categories.forEach(function(category) {
+                    var catFeatures = featureGroups[category] || [];
+                    console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
+                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
+                    catFeatures.forEach(function(feature, index) {
+                        var uniqueId = 'choice_3_acadia_' + globalIndex;
+                        var inputName = 'input_acadia_' + globalIndex;
+                        var simpleValue = 'acadia_feature_' + globalIndex;
+                        
+                        // Initialize global feature mapping
+                        if (!window.acadiaFeatureMap) {
+                            window.acadiaFeatureMap = {};
+                        }
+                        window.acadiaFeatureMap[simpleValue] = feature;
+                        
+                        // Try to find the full feature name from acadia descriptions
+                        var fullFeatureName = feature;
+                        if (acadiaFeatureDescriptions && Object.keys(acadiaFeatureDescriptions).length > 0) {
+                            // First try exact match
+                            var exactMatch = acadiaFeatureDescriptions[String(feature).toUpperCase()];
+                            if (exactMatch) {
+                                fullFeatureName = feature; // Use original since we have exact match
+                                console.log('✅ Found exact match for:', feature);
+                            } else {
+                                // Try partial matching for backwards compatibility
+                                var matchedKey = Object.keys(acadiaFeatureDescriptions).find(function(key) {
+                                    return key.includes(String(feature).toUpperCase()) || String(feature).toUpperCase().includes(key);
+                                });
+                                if (matchedKey) {
+                                    fullFeatureName = matchedKey;
+                                    console.log('⚠️ Found partial match for:', feature, '→', matchedKey);
+                                } else {
+                                    console.log('❌ No match found for:', feature);
+                                }
+                            }
+                        }
+                        
+                        // Build HTML using simple string concatenation to avoid any quote issues
+                        var divStart = '<div class="gchoice gchoice_acadia_' + globalIndex + '">';
+                        var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
+                        var labelTag = '<label for="' + uniqueId + '" id="label_acadia_' + globalIndex + '">' + fullFeatureName + '</label>';
+                        // Add feature info icon for acadia features - use full feature name for data-feature
+                        var infoIcon = '<span class="feature-info-icon acadia-info-icon" data-feature="' + String(fullFeatureName) + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Acadia feature description">ℹ</span>';
+                        var divEnd = '</div>';
+                        
+                        html += divStart + inputTag + labelTag + infoIcon + divEnd;
+                        globalIndex++;
+                    });
+                    html += '</div></div>';
+                });
+                html += '</div>';
+                
+                console.log('🔨 Generated HTML length:', html.length);
+                console.log('🔨 Generated HTML sample:', html.substring(0, 300) + '...');
+                
+                // Update HTML content
+                var htmlBlock = $('#field_' + formId + '_' + acadiaHtmlBlockFieldId);
+                if (htmlBlock.length) {
+                    console.log('Found HTML block, updating content...');
+                    htmlBlock.html(html);
+                    console.log('HTML block updated');
+                    
+                    // Mark as populated
+                    acadiaPopulated = true;
+                    console.log('✅ Acadia features populated successfully!');
+                    
+                    // Bind change events
+                    htmlBlock.find('input[type="checkbox"]').on('change', function() {
+                        var featureValue = this.value;
+                        var featureName = window.acadiaFeatureMap[featureValue];
+                        var category = $(this).data('category');
+                        console.log('ACADIA feature changed:', featureName, 'Category:', category, 'Checked:', this.checked);
+                    });
+
+                    htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var feature = $(this).attr('data-feature');
+                        console.log('=== ACADIA FEATURE INFO ICON CLICKED ===');
+                        console.log('Feature clicked:', feature);
+                        console.log('Feature type:', typeof feature);
+                        console.log('Feature length:', feature ? feature.length : 'undefined');
+                        console.log('Available acadia descriptions:', Object.keys(acadiaFeatureDescriptions));
+                        console.log('Total descriptions available:', Object.keys(acadiaFeatureDescriptions).length);
+                        console.log('All descriptions:', acadiaFeatureDescriptions);
+                        
+                        // Handle case where feature might be undefined or not a string
+                        if (!feature || typeof feature !== 'string') {
+                            console.error('Invalid feature:', feature);
+                            showFeatureDescription('Unknown Feature', 'Feature information not available');
+                            return;
+                        }
+                        
+                        console.log('Looking for feature (uppercase):', feature.toUpperCase());
+                        
+                        // Try exact match first
+                        var description = acadiaFeatureDescriptions[feature.toUpperCase()];
+                        
+                        // If no exact match, try partial matching
+                        if (!description) {
+                            console.log('No exact match found, trying partial matching...');
+                            var matchedKey = Object.keys(acadiaFeatureDescriptions).find(function(key) {
+                                // Check if the key contains the feature or vice versa
+                                return key.includes(feature.toUpperCase()) || feature.toUpperCase().includes(key);
+                            });
+                            if (matchedKey) {
+                                description = acadiaFeatureDescriptions[matchedKey];
+                                console.log('Found partial match:', matchedKey);
+                            }
+                        }
+                        
+                        // If still no match, provide fallback
+                        if (!description) {
+                            description = 'No GMC Acadia description available for ' + feature;
+                            console.log('No match found, using fallback description');
+                        }
+                        
+                        console.log('Found description:', description);
+                        console.log('=== END ACADIA FEATURE INFO DEBUG ===');
+                        
+                        showFeatureDescription(feature, description);
+                    });
+                } else {
+                    console.error('❌ HTML block not found for field ID:', acadiaHtmlBlockFieldId);
+                }
+            },
+            error: function(error) {
+                console.error('❌ Error parsing Acadia CSV:', error);
+            }
+        });
+    }
+
     // Bind click events for feature info icons with explicit propagation stop
     checkboxField.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
         e.preventDefault();
         e.stopPropagation();
         var feature = $(this).attr('data-feature');
-        // Use GMC Terrain descriptions for TERRAIN model, otherwise use KIA descriptions
+        // Use GMC Terrain descriptions for TERRAIN model, GMC Acadia descriptions for ACADIA model, otherwise use KIA descriptions
         var description;
         if (model === 'TERRAIN') {
             console.log('TERRAIN model detected, using GMC descriptions');
@@ -1798,6 +2175,39 @@ function populateTerrainFeaturesAfterDescriptions() {
             // If still no match, provide fallback
             if (!description) {
                 description = 'No GMC Terrain description available for ' + featureString;
+                console.log('No match found, using fallback description');
+            }
+            
+            console.log('Found description:', description);
+        } else if (model === 'ACADIA') {
+            console.log('ACADIA model detected, using GMC descriptions');
+            console.log('Feature to lookup:', feature);
+            
+            // Convert feature to string to avoid toUpperCase errors
+            var featureString = String(feature || '');
+            console.log('Feature as string:', featureString);
+            console.log('Feature uppercase:', featureString.toUpperCase());
+            console.log('Available acadia descriptions:', Object.keys(acadiaFeatureDescriptions));
+            
+            // Try exact match first
+            description = acadiaFeatureDescriptions[featureString.toUpperCase()];
+            
+            // If no exact match, try partial matching
+            if (!description) {
+                console.log('No exact match found, trying partial matching...');
+                var matchedKey = Object.keys(acadiaFeatureDescriptions).find(function(key) {
+                    // Check if the key contains the feature or vice versa
+                    return key.includes(featureString.toUpperCase()) || featureString.toUpperCase().includes(key);
+                });
+                if (matchedKey) {
+                    description = acadiaFeatureDescriptions[matchedKey];
+                    console.log('Found partial match:', matchedKey);
+                }
+            }
+            
+            // If still no match, provide fallback
+            if (!description) {
+                description = 'No GMC Acadia description available for ' + featureString;
                 console.log('No match found, using fallback description');
             }
             
@@ -2600,9 +3010,17 @@ function initFormBindings() {
                                     populateTerrainFeatures();
                                     console.log('terrainPopulated after call:', terrainPopulated);
                                     updateTrimLevels('TERRAIN');
+                                } else if (input.val() === 'ACADIA' && input.is(':checked')) {
+                                    console.log('🚗 ACADIA selected via radio button - calling populateAcadiaFeatures');
+                                    console.log('Current time:', new Date().toISOString());
+                                    console.log('acadiaPopulated before call:', acadiaPopulated);
+                                    populateAcadiaFeatures();
+                                    console.log('acadiaPopulated after call:', acadiaPopulated);
+                                    updateTrimLevels('ACADIA');
                                 } else if (input.is(':checked')) {
-                                    console.log('Non-TERRAIN GMC model selected: ' + input.val());
+                                    console.log('Non-TERRAIN/ACADIA GMC model selected: ' + input.val());
                                     terrainPopulated = false;
+                                    acadiaPopulated = false;
                                 }
                             }
                         }
@@ -2652,9 +3070,17 @@ function initFormBindings() {
                              populateTerrainFeatures();
                              console.log('terrainPopulated after call:', terrainPopulated);
                              updateTrimLevels('TERRAIN');
+                         } else if ($(this).val() === 'ACADIA' && $(this).is(':checked')) {
+                             console.log('🚗 ACADIA selected via delegated radio button - calling populateAcadiaFeatures');
+                             console.log('Current time:', new Date().toISOString());
+                             console.log('acadiaPopulated before call:', acadiaPopulated);
+                             populateAcadiaFeatures();
+                             console.log('acadiaPopulated after call:', acadiaPopulated);
+                             updateTrimLevels('ACADIA');
                          } else if ($(this).is(':checked')) {
-                             console.log('Non-TERRAIN GMC model selected via delegated: ' + $(this).val());
+                             console.log('Non-TERRAIN/ACADIA GMC model selected via delegated: ' + $(this).val());
                              terrainPopulated = false;
+                             acadiaPopulated = false;
                          }
                      }
                 }
@@ -2802,9 +3228,14 @@ function initFormBindings() {
                 console.log('TERRAIN radio button detected, calling populateTerrainFeatures');
                 populateTerrainFeatures();
                 updateTrimLevels('TERRAIN');
+            } else if ($(this).val() === 'ACADIA' && $(this).is(':checked')) {
+                console.log('ACADIA radio button detected, calling populateAcadiaFeatures');
+                populateAcadiaFeatures();
+                updateTrimLevels('ACADIA');
             } else if ($(this).is(':checked')) {
-                console.log('Non-TERRAIN GMC model selected, resetting terrain');
+                console.log('Non-TERRAIN/ACADIA GMC model selected, resetting');
                 terrainPopulated = false;
+                acadiaPopulated = false;
             }
         });
 
@@ -2827,7 +3258,17 @@ function initFormBindings() {
                             } else {
                                 console.log('TERRAIN radio button not checked or not found');
                             }
-                        } else if (model !== 'TERRAIN') {
+                        } else if (model === 'ACADIA') {
+                            // Check if ACADIA radio button is selected
+                            var acadiaRadio = $('#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"][value="ACADIA"]');
+                            if (acadiaRadio.length && acadiaRadio.is(':checked')) {
+                                console.log('ACADIA radio button is checked, populating features');
+                                populateAcadiaFeatures();
+                                updateTrimLevels(model);
+                            } else {
+                                console.log('ACADIA radio button not checked or not found');
+                            }
+                        } else if (model !== 'TERRAIN' && model !== 'ACADIA') {
                             updateTrimLevels(model);
                         }
                     });
@@ -2856,7 +3297,17 @@ function initFormBindings() {
                             } else {
                                 console.log('TERRAIN radio button not checked or not found');
                             }
-                        } else if (model !== 'TERRAIN') {
+                        } else if (model === 'ACADIA') {
+                            // Check if ACADIA radio button is selected
+                            var acadiaRadio = $('#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"][value="ACADIA"]');
+                            if (acadiaRadio.length && acadiaRadio.is(':checked')) {
+                                console.log('ACADIA radio button is checked, populating features');
+                                populateAcadiaFeatures();
+                                updateTrimLevels(model);
+                            } else {
+                                console.log('ACADIA radio button not checked or not found');
+                            }
+                        } else if (model !== 'TERRAIN' && model !== 'ACADIA') {
                             updateTrimLevels(model);
                         }
                     });
@@ -4844,6 +5295,7 @@ function showVehicleInfo(isKiaField) {
 
     loadFeatureDescriptions();
     loadTerrainFeatureDescriptions();
+    loadAcadiaFeatureDescriptions();
 initFormBindings();
 updateSelectedName();
 
@@ -5058,7 +5510,33 @@ window.reloadTerrainDescriptions = function() {
     loadTerrainFeatureDescriptions();
 };
 
-console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually(), checkTerrainState(), testTerrainDescriptions(), reloadTerrainDescriptions()');
+// Force reload acadia descriptions
+window.reloadAcadiaDescriptions = function() {
+    console.log('🔄 Forcing reload of acadia descriptions...');
+    acadiaFeatureDescriptions = {};
+    loadAcadiaFeatureDescriptions();
+};
+
+// Force populate acadia features
+window.forcePopulateAcadiaFeatures = function() {
+    console.log('🔄 Forcing populate of acadia features...');
+    acadiaPopulated = false;
+    populateAcadiaFeatures();
+};
+
+// Test acadia descriptions
+window.testAcadiaDescriptions = function() {
+    console.log('🧪 Testing acadia descriptions...');
+    console.log('Number of descriptions:', Object.keys(acadiaFeatureDescriptions).length);
+    console.log('First 5 descriptions:', Object.keys(acadiaFeatureDescriptions).slice(0, 5));
+    console.log('Sample description:', Object.keys(acadiaFeatureDescriptions)[0], ':', acadiaFeatureDescriptions[Object.keys(acadiaFeatureDescriptions)[0]]);
+    
+    // Reload descriptions
+    console.log('Reloading acadia descriptions...');
+    loadAcadiaFeatureDescriptions();
+};
+
+console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually(), checkTerrainState(), testTerrainDescriptions(), reloadTerrainDescriptions(), forcePopulateAcadiaFeatures(), testAcadiaDescriptions(), reloadAcadiaDescriptions()');
 
 // GLOBAL RADIO BUTTON LISTENER FOR DEBUGGING
 $(document).on('change', 'input[type="radio"]', function() {
