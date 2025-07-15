@@ -3967,18 +3967,37 @@ function initFormBindings() {
                 var overlay = $('#trimLevelsOverlay');
 
                 console.log('Trim Levels popup created for ' + model + ' (Model: ' + modelFilter + '), exists: ' + (popup.length > 0));
+                console.log('Trim Levels overlay created, exists: ' + (overlay.length > 0));
+                console.log('Popup HTML length: ' + popupHtml.length);
 
-                overlay.on('click', function(e) {
-                    if (e.target.id === 'trimLevelsOverlay') {
-                        console.log('Trim Levels overlay clicked, closing popup');
-                        $('#trimLevelsPopup, #trimLevelsOverlay').remove();
-                    }
-                });
+                // Add a small delay before binding overlay click to prevent immediate closing
+                var popupCreationTime = Date.now();
+                setTimeout(function() {
+                    overlay.on('click', function(e) {
+                        var timeSinceCreation = Date.now() - popupCreationTime;
+                        console.log('Trim Levels overlay clicked after ' + timeSinceCreation + 'ms, event target: ' + e.target.id);
+                        if (e.target.id === 'trimLevelsOverlay' && timeSinceCreation > 300) {
+                            console.log('Trim Levels overlay clicked, closing popup');
+                            $('#trimLevelsPopup, #trimLevelsOverlay').remove();
+                        } else if (timeSinceCreation <= 300) {
+                            console.log('Overlay click ignored - too soon after creation (' + timeSinceCreation + 'ms)');
+                        }
+                    });
+                }, 100);
 
                 popup.find('.trim-close-popup').on('click', function() {
                     console.log('Trim Levels close button clicked, closing popup');
                     $('#trimLevelsPopup, #trimLevelsOverlay').remove();
                 });
+
+                // Add a check to see if popup still exists after a short delay
+                setTimeout(function() {
+                    var popupStillExists = $('#trimLevelsPopup').length > 0;
+                    console.log('Popup still exists after 200ms: ' + popupStillExists);
+                    if (!popupStillExists) {
+                        console.log('⚠️ Popup was removed unexpectedly - investigating cause');
+                    }
+                }, 200);
 
                 popup.find('.copy-stock-link').on('click', function(e) {
                     e.preventDefault();
