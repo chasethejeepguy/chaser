@@ -543,6 +543,11 @@ jQuery(document).ready(function($) {
             .feature-groups {\
                 grid-template-columns: repeat(2, 1fr);\
             }\
+        }\
+        /* Terrain checkbox spacing */\
+        .gchoice[class*="gchoice_terrain_"] {\
+            margin-bottom: 4% !important;\
+            padding-bottom: 4px;\
         }';
     $('head').append('<style id="popupStyles">' + cssStyles + '</style>');
     console.log('Inline vehicle popup, Field 57, Generate Note, feature popup, trim levels popup, and Push to DriveCentric buttons CSS appended');
@@ -616,6 +621,7 @@ jQuery(document).ready(function($) {
     var emailFieldId2 = 119;
     var gmcModelFieldId = 107;
     var terrainCheckboxFieldId = 129;
+    var terrainHtmlBlockFieldId = 137;
 
     // Global variables
     var vehicleData = null;
@@ -801,6 +807,65 @@ jQuery(document).ready(function($) {
         });
     }
 
+    // Load GMC Terrain feature descriptions from CSV
+    var terrainFeatureDescriptions = {};
+    function loadTerrainFeatureDescriptions() {
+        var csvUrl = 'https://www.hutchinsonautoteam.com/gmcmodels/gmcterraindescriptions.csv';
+        console.log('Loading GMC Terrain descriptions from:', csvUrl);
+        fetchCsvWithRetry(csvUrl, 'GMC Terrain Feature Descriptions', 3, 1000).then(function(csvText) {
+            console.log('GMC Terrain descriptions CSV fetched successfully, length:', csvText.length);
+            console.log('First 500 characters of CSV:', csvText.substring(0, 500));
+            
+            // Parse the CSV - handle complex format with escaped quotes and multi-line descriptions
+            terrainFeatureDescriptions = {};
+            
+            // Split by lines and process each line
+            var lines = csvText.split('\n').filter(function(line) { return line.trim(); });
+            
+            lines.forEach(function(line, index) {
+                try {
+                    // Each line should be in format: "FEATURE NAME (DESCRIPTION)"
+                    // Handle escaped quotes in feature names (e.g., "19"" becomes 19")
+                    var match = line.match(/^"([^"]*(?:""[^"]*)*)" \((.+)\)$/);
+                    if (match) {
+                        var feature = match[1].replace(/""/g, '"').trim(); // Unescape quotes
+                        var description = match[2].trim(); // Get description
+                        
+                        // Store with case-insensitive key for matching
+                        terrainFeatureDescriptions[feature.toUpperCase()] = description;
+                        console.log('Loaded GMC Terrain description for:', feature);
+                    } else {
+                        // Try alternative parsing for entries without quotes
+                        var altMatch = line.match(/^([^(]+) \((.+)\)$/);
+                        if (altMatch) {
+                            var feature = altMatch[1].trim();
+                            var description = altMatch[2].trim();
+                            
+                            terrainFeatureDescriptions[feature.toUpperCase()] = description;
+                            console.log('Loaded GMC Terrain description (alt format) for:', feature);
+                        } else {
+                            console.warn('Could not parse terrain description line:', line.substring(0, 100));
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error parsing terrain description line:', error, line.substring(0, 100));
+                }
+            });
+            
+            console.log('GMC Terrain Feature Descriptions loaded, features:', Object.keys(terrainFeatureDescriptions).length);
+            console.log('Sample features loaded:', Object.keys(terrainFeatureDescriptions).slice(0, 5));
+            console.log('All terrain features loaded:', Object.keys(terrainFeatureDescriptions));
+            if (Object.keys(terrainFeatureDescriptions).length === 0) {
+                console.warn('No GMC Terrain descriptions were parsed from CSV');
+            } else {
+                console.log('SUCCESS: GMC Terrain descriptions loaded successfully!');
+            }
+        }).catch(function(error) {
+            console.error('Fetch error for GMC Terrain Feature Descriptions:', error.message);
+            terrainFeatureDescriptions = {};
+        });
+    }
+
     // Fuzzy matching function with exact matching for K4 and validation
     function fuzzyMatch(str1, str2, model, feature) {
         if (!str1 || !str2 || typeof str1 !== 'string' || typeof str2 !== 'string' || str1.trim() === '' || str2.trim() === '') {
@@ -924,6 +989,11 @@ jQuery(document).ready(function($) {
      * Meets minimum line requirement.
      */
 	function populateTerrainFeatures() {
+    console.log('=== populateTerrainFeatures called ===');
+    console.log('Current terrainPopulated flag:', terrainPopulated);
+    console.log('Form ID:', formId);
+    console.log('terrainHtmlBlockFieldId:', terrainHtmlBlockFieldId);
+    
     if (terrainPopulated) {
         console.log('Terrain features already populated, skipping');
         return;
@@ -932,73 +1002,228 @@ jQuery(document).ready(function($) {
     var config = modelConfigs['TERRAIN'];
     if (!config) {
         console.warn('Terrain configuration not found');
+        console.log('Available modelConfigs:', Object.keys(modelConfigs));
+        return;
+    }
+    console.log('Terrain config found:', config);
+
+    // Try multiple selectors to find the HTML block field
+    console.log('Searching for HTML block field with multiple selectors...');
+    var htmlBlock = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
+    console.log('Selector 1 (#field_' + formId + '_' + terrainHtmlBlockFieldId + '):', htmlBlock.length);
+    
+    if (!htmlBlock.length) {
+        htmlBlock = $('#field_' + formId + '_137');
+        console.log('Selector 2 (#field_' + formId + '_137):', htmlBlock.length);
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('#input_' + formId + '_137');
+        console.log('Selector 3 (#input_' + formId + '_137):', htmlBlock.length);
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('[id*="137"]').filter(function() {
+            return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+        });
+        console.log('Selector 4 (wildcard [id*="137"]):', htmlBlock.length);
+    }
+    
+    // Log all elements with 137 in ID
+    var all137Elements = $('[id*="137"]');
+    console.log('All elements with 137 in ID:');
+    all137Elements.each(function(i) {
+        console.log('  ' + i + ': ' + this.id + ' (tag: ' + this.tagName + ', class: ' + $(this).attr('class') + ')');
+    });
+    
+    console.log('HTML Block field (ID: 137) debug:', {
+        selector: '#field_' + formId + '_' + terrainHtmlBlockFieldId,
+        exists: htmlBlock.length > 0,
+        visible: htmlBlock.length ? htmlBlock.is(':visible') : false,
+        content: htmlBlock.length ? htmlBlock.html().substring(0, 200) : 'N/A',
+        actualId: htmlBlock.length ? htmlBlock.attr('id') : 'N/A',
+        allFields137: $('[id*="137"]').map(function() { return this.id; }).get()
+    });
+    
+    if (!htmlBlock.length) {
+        console.warn('Terrain HTML block field (ID: 137) not found with any selector');
+        console.log('All form fields:', $('#gform_fields_' + formId).find('.gfield').map(function() { 
+            return { id: $(this).attr('id'), class: $(this).attr('class') }; 
+        }).get());
+        
+        // Try to find any HTML block field
+        var allHtmlFields = $('[id*="field"][id*="' + formId + '"]').filter(function() {
+            return $(this).find('.gfield_html').length > 0 || $(this).hasClass('gfield_html');
+        });
+        console.log('All HTML block fields found:', allHtmlFields.map(function() { return this.id; }).get());
         return;
     }
 
-    var checkboxField = $('#field_' + formId + '_' + config.fieldId);
-    if (!checkboxField.length) {
-        console.warn('Terrain checkbox field (ID: 129) not found');
-        return;
-    }
-
+    console.log('Fetching terrain CSV from:', config.csvUrl);
     fetchCsvWithRetry(config.csvUrl, 'Terrain', 3, 1000).then(function(csvText) {
+        console.log('Terrain CSV fetched successfully, length:', csvText.length);
+        console.log('CSV preview (first 500 chars):', csvText.substring(0, 500));
+        
         Papa.parse(csvText, {
             skipEmptyLines: true,
             complete: function(results) {
                 console.log('Terrain CSV parsed for population, rows: ' + results.data.length);
+                console.log('First few rows:', results.data.slice(0, 3));
+                
                 var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
                 var featureGroups = {};
                 var currentCategory = null;
                 var features = [];
 
-                results.data.forEach(function(row) {
+                results.data.forEach(function(row, rowIndex) {
                     if (row.length > 0) {
                         var firstCell = row[0] ? row[0].trim() : '';
                         if (firstCell.startsWith('TRIM LEVELS FOR {')) {
                             if (currentCategory && features.length > 0) {
                                 featureGroups[currentCategory] = features;
+                                console.log('Stored category: ' + currentCategory + ' with ' + features.length + ' features');
                             }
                             currentCategory = firstCell.match(/\{(.+)\}/)[1];
-                            features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; });
-                            console.log('Parsed category: ' + currentCategory + ', features: ' + features.length);
+                            // Clean up features by removing extra quotes and trimming
+                            features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                // Remove surrounding quotes if present
+                                var cleaned = f.trim();
+                                if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                    cleaned = cleaned.slice(1, -1);
+                                }
+                                // Handle double quotes inside the string (CSV escape format)
+                                cleaned = cleaned.replace(/""/g, '"');
+                                return cleaned;
+                            });
+                            console.log('Row ' + rowIndex + ': Parsed category: ' + currentCategory + ', features: ' + features.length);
+                            console.log('Features for ' + currentCategory + ':', features.slice(0, 5)); // Show first 5 features
+                            console.log('Raw features before cleaning:', row.slice(1, 6)); // Show raw features
                         }
                     }
                 });
                 if (currentCategory && features.length > 0) {
                     featureGroups[currentCategory] = features;
+                    console.log('Final stored category: ' + currentCategory + ' with ' + features.length + ' features');
                 }
+
+                console.log('Feature groups summary:', Object.keys(featureGroups).map(function(cat) {
+                    return cat + ': ' + featureGroups[cat].length + ' features';
+                }));
 
                 if (Object.keys(featureGroups).length !== 5) {
                     console.error('Expected 5 categories, found: ' + Object.keys(featureGroups).length);
+                    console.error('Found categories:', Object.keys(featureGroups));
                     return;
                 }
 
+                console.log('Building HTML for terrain features...');
                 var html = '<div class="feature-groups">';
+                var globalIndex = 0;
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
-                    html += '<div class="feature-column"><h4>' + category + '</h4><ul class="gfield_checkbox">';
+                    console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
+                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
                     catFeatures.forEach(function(feature, index) {
-                        var id = 'choice_3_129_' + (categories.indexOf(category) * 100 + index);
-                        html += '<li class="gchoice gchoice_3_129_' + index + '">\
-                            <input name="input_129.' + (index + 1) + '" type="checkbox" value="' + feature + '" id="' + id + '">\
-                            <label for="' + id + '" id="label_3_129_' + index + '">' + feature + '</label>\
-                        </li>';
+                        var uniqueId = 'choice_3_terrain_' + globalIndex;
+                        var inputName = 'input_terrain_' + globalIndex;
+                        var simpleValue = 'terrain_feature_' + globalIndex;
+                        
+                        // Initialize global feature mapping
+                        if (!window.terrainFeatureMap) {
+                            window.terrainFeatureMap = {};
+                        }
+                        window.terrainFeatureMap[simpleValue] = feature;
+                        
+                        // Build HTML using simple string concatenation to avoid any quote issues
+                        var divStart = '<div class="gchoice gchoice_terrain_' + globalIndex + '">';
+                        var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
+                        var labelTag = '<label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>';
+                        // Add feature info icon for terrain features
+                        var infoIcon = '<span class="feature-info-icon terrain-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Terrain feature description">ℹ</span>';
+                        var divEnd = '</div>';
+                        
+                        html += divStart + inputTag + labelTag + infoIcon + divEnd;
+                        globalIndex++;
                     });
-                    html += '</ul></div>';
+                    html += '</div></div>';
                 });
                 html += '</div>';
+                
+                console.log('🔨 Generated HTML length:', html.length);
+                console.log('🔨 Generated HTML preview:', html.substring(0, 300));
+                console.log('🔨 Total checkboxes to create:', globalIndex);
 
-                checkboxField.find('.ginput_container_checkbox').html(html);
+                // COMPREHENSIVE DEBUG: Check HTML block state
+                console.log('🔍 HTML BLOCK DEBUG BEFORE REPLACEMENT:');
+                console.log('  - HTML Block exists:', htmlBlock.length > 0);
+                console.log('  - HTML Block ID:', htmlBlock.attr('id'));
+                console.log('  - HTML Block visible:', htmlBlock.is(':visible'));
+                console.log('  - HTML Block parent visible:', htmlBlock.parent().is(':visible'));
+                console.log('  - HTML Block display style:', htmlBlock.css('display'));
+                console.log('  - HTML Block current content length:', htmlBlock.html().length);
+
+                // Replace {terrain feature checkboxes} placeholder in field 137
+                var htmlContent = htmlBlock.html();
+                console.log('📝 HTML Block content before replacement (length: ' + htmlContent.length + '):', htmlContent);
+                console.log('🔍 Looking for placeholder: {terrain feature checkboxes}');
+                console.log('🔍 Placeholder found:', htmlContent.indexOf('{terrain feature checkboxes}') !== -1);
+                
+                // FORCE REPLACEMENT REGARDLESS OF PLACEHOLDER
+                console.log('🔧 FORCING HTML REPLACEMENT...');
+                if (htmlContent.indexOf('{terrain feature checkboxes}') !== -1) {
+                    htmlContent = htmlContent.replace('{terrain feature checkboxes}', html);
+                    htmlBlock.html(htmlContent);
+                    console.log('✅ Replaced {terrain feature checkboxes} placeholder in field 137');
+                } else {
+                    // If no placeholder found, try to find a suitable container or replace entire content
+                    var targetContainer = htmlBlock.find('.ginput_container, .gfield_html_formatted').first();
+                    if (targetContainer.length) {
+                        console.log('🎯 Found container, replacing its content');
+                        targetContainer.html(html);
+                        console.log('✅ Replaced content in container within field 137');
+                    } else {
+                        console.log('⚠️ No container found, replacing entire HTML block content');
+                        htmlBlock.html(html);
+                        console.log('✅ Replaced entire content of field 137 (no placeholder or container found)');
+                    }
+                }
+                
+                // COMPREHENSIVE DEBUG: Check HTML block state after replacement
+                console.log('🔍 HTML BLOCK DEBUG AFTER REPLACEMENT:');
+                console.log('  - HTML Block content length after replacement:', htmlBlock.html().length);
+                console.log('  - HTML Block content preview:', htmlBlock.html().substring(0, 300));
+                
+                // FORCE CHECK FOR CHECKBOXES
+                console.log('🔍 SEARCHING FOR CREATED CHECKBOXES...');
+                var createdCheckboxes = htmlBlock.find('input[type="checkbox"]');
+                console.log('✅ Checkboxes found in HTML block:', createdCheckboxes.length);
+                
+                // Also check in the entire document
+                var allTerrainCheckboxes = $('input[type="checkbox"][id*="terrain"]');
+                console.log('✅ All terrain checkboxes in document:', allTerrainCheckboxes.length);
+                
+                // Check for checkboxes with data-category attribute
+                var categoryCheckboxes = $('input[type="checkbox"][data-category]');
+                console.log('✅ Checkboxes with data-category:', categoryCheckboxes.length);
+                
+                // Log first few checkboxes for verification
+                createdCheckboxes.slice(0, 3).each(function(i) {
+                    console.log('Checkbox ' + i + ':', {
+                        id: $(this).attr('id'),
+                        name: $(this).attr('name'),
+                        value: $(this).attr('value'),
+                        category: $(this).attr('data-category')
+                    });
+                });
+
                 terrainPopulated = true;
-                console.log('Terrain features populated into 5 columns');
+                console.log('Terrain features populated into 5 columns in field 137');
 
                 // Bind change events and add info icons
-                checkboxField.find('input[type="checkbox"]').off('change.TERRAINFeatures').on('change.TERRAINFeatures', function() {
+                htmlBlock.find('input[type="checkbox"]').off('change.TERRAINFeatures').on('change.TERRAINFeatures', function() {
                     console.log('TERRAIN checkbox changed, updating trim levels');
                     updateTrimLevels('TERRAIN');
                 });
 
-                checkboxField.find('.gchoice').each(function() {
+                htmlBlock.find('.gchoice').each(function() {
                     var $div = $(this);
                     var $input = $div.find('input[type="checkbox"]');
                     var $label = $div.find('label');
@@ -1014,11 +1239,30 @@ jQuery(document).ready(function($) {
                     }
                 });
 
-                checkboxField.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
+                htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     var feature = $(this).data('feature');
-                    var description = featureDescriptions[feature] || 'No description available for ' + feature;
+                    console.log('=== TERRAIN FEATURE INFO ICON CLICKED ===');
+                    console.log('Feature clicked:', feature);
+                    console.log('Feature type:', typeof feature);
+                    console.log('Feature length:', feature ? feature.length : 'undefined');
+                    console.log('Available terrain descriptions:', Object.keys(terrainFeatureDescriptions));
+                    console.log('Total descriptions available:', Object.keys(terrainFeatureDescriptions).length);
+                    console.log('All descriptions:', terrainFeatureDescriptions);
+                    
+                    // Handle case where feature might be undefined or not a string
+                    if (!feature || typeof feature !== 'string') {
+                        console.error('Invalid feature:', feature);
+                        showFeatureDescription('Unknown Feature', 'Feature information not available');
+                        return;
+                    }
+                    
+                    console.log('Looking for feature (uppercase):', feature.toUpperCase());
+                    // Use GMC Terrain descriptions instead of KIA descriptions (case-insensitive)
+                    var description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No GMC Terrain description available for ' + feature;
+                    console.log('Found description:', description);
+                    console.log('=== END TERRAIN FEATURE INFO DEBUG ===');
                     showFeatureDescription(feature, description);
                 });
             },
@@ -1031,20 +1275,324 @@ jQuery(document).ready(function($) {
     });
 }
 
-function updateTrimLevels(model) {
+	function processTerrainTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
+		console.log('Processing TERRAIN trim levels for selected features:', selectedFeatures);
+		
+		var trimLevels = ['ELEVATION', 'AT4', 'DENALI'];
+		var matchingTrimLevels = [];
+		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+		var featureToColumnMap = {};
+		var featureToCategoryMap = {};
+		var trimLevelRows = {};
+		var trimLevelRowsByCategory = {};
+		var currentCategory = null;
+		
+		// Parse the CSV data to map features to columns and find trim level rows
+		csvData.forEach(function(row, rowIndex) {
+			if (row.length > 0) {
+				var firstCell = row[0] ? row[0].trim() : '';
+				
+				// Check if this is a category header row
+				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+					var category = firstCell.match(/\{(.+)\}/)[1];
+					currentCategory = category;
+					console.log('Found category:', category);
+					
+					// Initialize category storage if not exists
+					if (!trimLevelRowsByCategory[category]) {
+						trimLevelRowsByCategory[category] = {};
+					}
+					
+					// Map features to their column indices
+					for (var i = 1; i < row.length; i++) {
+						var feature = row[i] ? row[i].trim() : '';
+						if (feature && feature !== '') {
+							// Clean up the feature name the same way as in populateTerrainFeatures
+							var cleanedFeature = feature;
+							if (cleanedFeature.startsWith('"') && cleanedFeature.endsWith('"')) {
+								cleanedFeature = cleanedFeature.slice(1, -1);
+							}
+							cleanedFeature = cleanedFeature.replace(/""/g, '"');
+							
+							featureToColumnMap[cleanedFeature] = i;
+							featureToCategoryMap[cleanedFeature] = category;
+							console.log('Mapped feature "' + cleanedFeature + '" (raw: "' + feature + '") to column ' + i + ' in category ' + category);
+						}
+					}
+				}
+				// Check if this is a trim level row
+				else if (trimLevels.includes(firstCell) && currentCategory) {
+					// Store in both global and category-specific storage
+					trimLevelRows[firstCell] = row;
+					trimLevelRowsByCategory[currentCategory][firstCell] = row;
+					console.log('Found trim level row for:', firstCell, 'in category:', currentCategory);
+					
+					// Debug specific trim level data for SAFETY section
+					if (currentCategory === 'SAFETY') {
+						console.log('=== SAFETY TRIM LEVEL DATA FOR ' + firstCell + ' ===');
+						console.log('Full row:', row);
+						console.log('Row length:', row.length);
+						for (var i = 0; i < Math.min(row.length, 15); i++) {
+							console.log('Column ' + i + ': "' + row[i] + '"');
+						}
+						console.log('=== END SAFETY TRIM LEVEL DATA ===');
+					}
+				}
+			}
+		});
+		
+		console.log('Feature to column mapping:', featureToColumnMap);
+		console.log('Feature to category mapping:', featureToCategoryMap);
+		console.log('Trim level rows:', Object.keys(trimLevelRows));
+		console.log('Trim level rows by category:', trimLevelRowsByCategory);
+		
+		// Check which trim levels have all selected features
+		trimLevels.forEach(function(trimLevel) {
+			if (trimLevelRows[trimLevel]) {
+				var hasAllFeatures = true;
+				var featureResults = [];
+				
+				selectedFeatures.forEach(function(feature) {
+					var columnIndex = featureToColumnMap[feature];
+					var matchedFeature = feature;
+					
+					// If exact match not found, try fuzzy matching
+					if (columnIndex === undefined) {
+						console.log('Feature "' + feature + '" not found in column mapping, trying fuzzy matching...');
+						var bestMatch = null;
+						var bestScore = 0;
+						var threshold = 0.3; // Lower threshold for partial matches
+						
+						// Try to find partial matches
+						Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+							var score = 0;
+							
+							// Check if the selected feature is contained in the CSV feature
+							if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+								score = 0.8; // High score for containment
+							}
+							// Check if CSV feature starts with the selected feature
+							else if (csvFeature.toLowerCase().startsWith(feature.toLowerCase())) {
+								score = 0.7;
+							}
+							// Check if selected feature is a significant part of CSV feature
+							else if (feature.length >= 3 && csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+								score = 0.6;
+							}
+							// Fuzzy string matching as fallback
+							else {
+								var featureNorm = feature.toLowerCase().replace(/[^a-z0-9]/g, '');
+								var csvFeatureNorm = csvFeature.toLowerCase().replace(/[^a-z0-9]/g, '');
+								if (featureNorm.length > 0 && csvFeatureNorm.length > 0) {
+									var commonLength = 0;
+									var maxLength = Math.max(featureNorm.length, csvFeatureNorm.length);
+									for (var i = 0; i < Math.min(featureNorm.length, csvFeatureNorm.length); i++) {
+										if (featureNorm[i] === csvFeatureNorm[i]) {
+											commonLength++;
+										} else {
+											break;
+										}
+									}
+									score = commonLength / maxLength;
+								}
+							}
+							
+							console.log('Fuzzy match attempt: "' + feature + '" vs "' + csvFeature + '": score=' + score);
+							
+							if (score > bestScore && score >= threshold) {
+								bestScore = score;
+								bestMatch = csvFeature;
+							}
+						});
+						
+						if (bestMatch) {
+							console.log('Found fuzzy match for "' + feature + '": "' + bestMatch + '" (score: ' + bestScore + ')');
+							columnIndex = featureToColumnMap[bestMatch];
+							matchedFeature = bestMatch;
+						}
+					}
+					
+					if (columnIndex !== undefined) {
+						// Get the category for this feature
+						var featureCategory = featureToCategoryMap[matchedFeature];
+						var value = null;
+						
+						// Use category-specific trim level data if available
+						if (featureCategory && trimLevelRowsByCategory[featureCategory] && trimLevelRowsByCategory[featureCategory][trimLevel]) {
+							value = trimLevelRowsByCategory[featureCategory][trimLevel][columnIndex];
+							console.log('Using category-specific data for ' + trimLevel + ' in category ' + featureCategory + ', column ' + columnIndex + ': "' + value + '"');
+						} else {
+							// Fallback to global trim level data
+							value = trimLevelRows[trimLevel][columnIndex];
+							console.log('Using global data for ' + trimLevel + ', column ' + columnIndex + ': "' + value + '"');
+						}
+						// Clean up the value and check for YES (handle edge cases like "YNO" -> "NO")
+						var cleanedValue = value ? value.trim().toLowerCase() : '';
+						var hasFeature = false;
+						
+						if (cleanedValue === 'yes') {
+							hasFeature = true;
+						} else if (cleanedValue === 'no') {
+							hasFeature = false;
+						} else if (cleanedValue.startsWith('y') && cleanedValue.length <= 4) {
+							// Handle cases like "YNO" which should be "NO"
+							hasFeature = false;
+							console.warn('Found malformed value "' + value + '" for feature "' + matchedFeature + '" in trim level "' + trimLevel + '", treating as NO');
+						} else {
+							// Default to false for any other value
+							hasFeature = false;
+							if (cleanedValue !== '') {
+								console.warn('Unknown value "' + value + '" for feature "' + matchedFeature + '" in trim level "' + trimLevel + '", treating as NO');
+							}
+						}
+						
+						featureResults.push({
+							feature: feature,
+							matchedFeature: matchedFeature,
+							value: value,
+							cleanedValue: cleanedValue,
+							hasFeature: hasFeature
+						});
+						
+						console.log('Feature check for ' + trimLevel + ': "' + feature + '" -> "' + matchedFeature + '" = "' + value + '" (' + cleanedValue + ') -> ' + hasFeature);
+						
+						if (!hasFeature) {
+							hasAllFeatures = false;
+						}
+					} else {
+						console.log('Feature "' + feature + '" not found in column mapping even with fuzzy matching');
+						hasAllFeatures = false;
+					}
+				});
+				
+				console.log('Trim level ' + trimLevel + ' feature check:', featureResults);
+				console.log('Has all features:', hasAllFeatures);
+				
+				if (hasAllFeatures) {
+					matchingTrimLevels.push(trimLevel);
+				}
+			}
+		});
+		
+		console.log('Matching trim levels for ' + model + ':', matchingTrimLevels);
+		
+		// Update the HTML block with results
+		var resultText = '';
+		if (matchingTrimLevels.length > 0) {
+			resultText = 'Available trim levels with your selected features: ' + matchingTrimLevels.join(', ');
+		} else {
+			resultText = 'No trim levels have all your selected features. Please adjust your selections.';
+		}
+		
+		if (htmlBlock.length) {
+			htmlBlock.find('p').text(resultText);
+		}
+		
+		// Update the trim levels button
+		if (trimLevelsButtonBlock.length) {
+			var buttonText = matchingTrimLevels.length > 0 ? 
+				'View Available Trim Levels (' + matchingTrimLevels.length + ')' : 
+				'No Matching Trim Levels';
+			
+			trimLevelsButtonBlock.html('<button type="button" id="viewTrimLevelsButton" class="button">' + buttonText + '</button>');
+			
+			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
+				e.preventDefault();
+				if (matchingTrimLevels.length > 0) {
+					var detailsHtml = '<h2>Available Trim Levels for ' + model + '</h2>';
+					detailsHtml += '<p>Based on your selected features, the following trim levels are available:</p>';
+					detailsHtml += '<ul>';
+					matchingTrimLevels.forEach(function(trimLevel) {
+						detailsHtml += '<li><strong>' + trimLevel + '</strong></li>';
+					});
+					detailsHtml += '</ul>';
+					detailsHtml += '<p>Selected features: ' + selectedFeatures.join(', ') + '</p>';
+					
+					// Show matched features for debugging
+					if (matchingTrimLevels.length > 0) {
+						detailsHtml += '<h3>Feature Matching Details:</h3>';
+						matchingTrimLevels.forEach(function(trimLevel) {
+							if (trimLevelRows[trimLevel]) {
+								detailsHtml += '<h4>' + trimLevel + '</h4><ul>';
+								selectedFeatures.forEach(function(feature) {
+									var columnIndex = featureToColumnMap[feature];
+									var matchedFeature = feature;
+									
+									// Try fuzzy matching if exact match not found
+									if (columnIndex === undefined) {
+										Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+											if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+												columnIndex = featureToColumnMap[csvFeature];
+												matchedFeature = csvFeature;
+											}
+										});
+									}
+									
+									if (columnIndex !== undefined) {
+										var value = trimLevelRows[trimLevel][columnIndex];
+										detailsHtml += '<li>' + feature + (matchedFeature !== feature ? ' (matched: ' + matchedFeature + ')' : '') + ': ' + value + '</li>';
+									}
+								});
+								detailsHtml += '</ul>';
+							}
+						});
+					}
+					
+					// Call the proper showTrimLevelsPopup function like other models
+					showTrimLevelsPopup(model, matchingTrimLevels, model);
+				} else {
+					alert('No trim levels match your selected features. Please adjust your selections.');
+				}
+			});
+		}
+		
+		// Store the results
+		trimLevelsData[model] = matchingTrimLevels;
+	}
+
+	function updateTrimLevels(model) {
     var config = modelConfigs[model];
     if (!config) {
         console.warn('Model configuration not found for: ' + model);
         return;
     }
-    var checkboxField = $('#field_' + formId + '_' + config.fieldId);
-    var htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
-    var trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    var checkboxField, htmlBlock, trimLevelsButtonBlock;
+    
+    if (model === 'TERRAIN') {
+        // For TERRAIN, checkboxes are in field 137 (HTML block)
+        checkboxField = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
+        if (!checkboxField.length) {
+            checkboxField = $('#field_' + formId + '_137');
+        }
+        if (!checkboxField.length) {
+            checkboxField = $('[id*="137"]').filter(function() {
+                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+            });
+        }
+        
+        console.log('TERRAIN checkboxField debug:', {
+            terrainHtmlBlockFieldId: terrainHtmlBlockFieldId,
+            selector1: '#field_' + formId + '_' + terrainHtmlBlockFieldId,
+            selector2: '#field_' + formId + '_137',
+            found: checkboxField.length,
+            actualId: checkboxField.attr('id'),
+            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
+        });
+        
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    } else {
+        // For other models, checkboxes are in their respective fields
+        checkboxField = $('#field_' + formId + '_' + config.fieldId);
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    }
+    
     var defaultText = 'Wonderful, it sounds like the {TRIM LEVELS} would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
     var defaultButtonText = '<button id="viewTrimLevelsButton">View Trim Levels</button>';
     var noMatchText = 'No matching trim levels found. Please adjust your feature selections or contact support.';
 
-    console.log('Checking ' + model + ' checkbox field (ID: ' + config.fieldId + '):', {
+    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : config.fieldId) + '):', {
         fieldExists: checkboxField.length > 0,
         fieldVisible: checkboxField.is(':visible'),
         fieldClasses: checkboxField.attr('class'),
@@ -1054,48 +1602,92 @@ function updateTrimLevels(model) {
     });
 
     // Ensure feature info icons are prepended before feature labels
-    checkboxField.find('.gfield_checkbox > div, .gfield-choice-wrapper').each(function() {
-        var $div = $(this);
-        var $input = $div.find('input[type="checkbox"]');
-        var $label = $div.find('label, .gfield-choice-label');
-        var feature = '';
-        if ($label.length) {
-            feature = $label.contents().filter(function() {
-                return this.nodeType === 3; // Text nodes only, excludes .feature-info-icon
-            }).text().trim();
-        }
-        if (!feature || !$input.length) {
-            console.warn('Invalid checkbox structure in field (ID: ' + config.fieldId + ')', {
-                feature: feature,
-                inputExists: $input.length > 0,
-                labelExists: $label.length > 0,
-                divHtml: $div.html(),
-                inputId: $input.attr('id'),
-                labelClasses: $label.attr('class'),
-                parentClasses: $div.attr('class'),
-                parentHtml: $div.parent().html().substring(0, 500)
+    if (model === 'TERRAIN') {
+        // For TERRAIN, handle the different structure
+        checkboxField.find('.gchoice').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label');
+            var feature = $input.attr('value') || '';
+            
+            if (!feature || !$input.length) {
+                console.warn('Invalid TERRAIN checkbox structure in field (ID: ' + terrainHtmlBlockFieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class')
+                });
+                return;
+            }
+            
+            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
+                return fuzzyMatch(key, feature, model, feature);
             });
-            return;
-        }
-        var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
-            return model === 'K4' ? key.toUpperCase() === feature.toUpperCase() : fuzzyMatch(key, feature, model, feature);
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
+                console.log('Prepended info icon before TERRAIN feature: ' + feature + ', matched: ' + matchedFeature);
+            }
         });
-        if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
-            $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
-            console.log('Prepended info icon before feature: ' + feature + ', matched: ' + matchedFeature);
-        }
-    });
+    } else {
+        // For other models, use existing logic
+        checkboxField.find('.gfield_checkbox > div, .gfield-choice-wrapper').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label, .gfield-choice-label');
+            var feature = '';
+            if ($label.length) {
+                feature = $label.contents().filter(function() {
+                    return this.nodeType === 3; // Text nodes only, excludes .feature-info-icon
+                }).text().trim();
+            }
+            if (!feature || !$input.length) {
+                console.warn('Invalid checkbox structure in field (ID: ' + config.fieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class'),
+                    parentHtml: $div.parent().html().substring(0, 500)
+                });
+                return;
+            }
+            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
+                return model === 'K4' ? key.toUpperCase() === feature.toUpperCase() : fuzzyMatch(key, feature, model, feature);
+            });
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
+                console.log('Prepended info icon before feature: ' + feature + ', matched: ' + matchedFeature);
+            }
+        });
+    }
 
     // Bind click events for feature info icons with explicit propagation stop
     checkboxField.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
         e.preventDefault();
         e.stopPropagation();
         var feature = $(this).data('feature');
-        var description = featureDescriptions[feature] || 'No description available for ' + feature;
+        // Use GMC Terrain descriptions for TERRAIN model, otherwise use KIA descriptions
+        var description;
+        if (model === 'TERRAIN') {
+            console.log('TERRAIN model detected, using GMC descriptions');
+            console.log('Feature to lookup:', feature);
+            console.log('Feature uppercase:', feature.toUpperCase());
+            console.log('Available terrain descriptions:', Object.keys(terrainFeatureDescriptions));
+            description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No description available for ' + feature;
+            console.log('Found description:', description);
+        } else {
+            description = featureDescriptions[feature] || 'No description available for ' + feature;
+        }
         console.log('Feature info icon clicked for: ' + feature, {
             eventTarget: e.target,
             featureData: feature,
-            description: description
+            description: description,
+            model: model
         });
         showFeatureDescription(feature, description);
     });
@@ -1118,32 +1710,83 @@ function updateTrimLevels(model) {
             var formFields = $('#gform_fields_' + formId).find('.gfield').map(function() { return $(this).attr('id'); }).get();
             console.log('All form field IDs:', formFields);
         }
+        if (model === 'TERRAIN') {
+            console.warn('TERRAIN HTML block field (ID: 137) not found or not visible, checking form structure');
+            var formFields = $('#gform_fields_' + formId).find('.gfield').map(function() { return $(this).attr('id'); }).get();
+            console.log('All form field IDs:', formFields);
+        }
         trimLevelsData[model] = [];
         return;
     }
 
+    // Debug checkbox field contents
+    console.log('=== CHECKBOX FIELD DEBUG ===');
+    console.log('Model:', model);
+    console.log('Checkbox field exists:', checkboxField.length > 0);
+    console.log('Checkbox field selector used:', checkboxField.selector || 'N/A');
+    console.log('Checkbox field HTML preview:', checkboxField.html() ? checkboxField.html().substring(0, 500) : 'N/A');
+    
+    var allCheckboxes = checkboxField.find('input[type="checkbox"]');
+    console.log('Total checkboxes found:', allCheckboxes.length);
+    
+    var checkedCheckboxes = checkboxField.find('input[type="checkbox"]:checked');
+    console.log('Checked checkboxes found:', checkedCheckboxes.length);
+    
+    // Debug all checkboxes
+    allCheckboxes.each(function(index) {
+        var $input = $(this);
+        console.log('Checkbox ' + index + ':', {
+            id: $input.attr('id'),
+            name: $input.attr('name'),
+            value: $input.attr('value') ? $input.attr('value').substring(0, 50) + '...' : 'N/A',
+            checked: $input.is(':checked'),
+            type: $input.attr('type'),
+            parentClass: $input.parent().attr('class')
+        });
+    });
+    
     var selectedFeatures = checkboxField.find('input[type="checkbox"]:checked').map(function() {
         var $input = $(this);
-        var $div = $input.closest('.gfield_checkbox > div, .gfield-choice-wrapper');
-        var $label = $div.find('label, .gfield-choice-label');
         var feature = '';
-        if ($label.length) {
-            feature = $label.contents().filter(function() {
-                return this.nodeType === 3; // Text nodes only, excludes .feature-info-icon
-            }).text().trim();
-        }
-        if (!feature) {
-            feature = $input.attr('value') || $input.attr('name') || '';
-            console.warn('Empty or invalid feature label for checked checkbox in field (ID: ' + config.fieldId + '), using fallback', {
-                checkboxId: $input.attr('id'),
-                value: $input.attr('value'),
+        
+        if (model === 'TERRAIN') {
+            // For TERRAIN, get feature from the global mapping using the checkbox value
+            var checkboxValue = $input.attr('value') || '';
+            feature = window.terrainFeatureMap && window.terrainFeatureMap[checkboxValue] ? window.terrainFeatureMap[checkboxValue] : '';
+            // No need to unescape since we're not storing escaped values anymore
+            
+            console.log('TERRAIN checkbox debug:', {
+                id: $input.attr('id'),
+                checkboxValue: checkboxValue,
+                mappedFeature: feature,
+                featureLength: feature.length,
                 name: $input.attr('name'),
-                divHtml: $div.html(),
-                labelExists: $label.length > 0,
-                parentClasses: $div.attr('class'),
-                parentHtml: $div.parent().html().substring(0, 500)
+                checked: $input.is(':checked'),
+                labelText: $input.next('label').text().substring(0, 100)
             });
+        } else {
+            // For other models, use the existing logic
+            var $div = $input.closest('.gfield_checkbox > div, .gfield-choice-wrapper');
+            var $label = $div.find('label, .gfield-choice-label');
+            if ($label.length) {
+                feature = $label.contents().filter(function() {
+                    return this.nodeType === 3; // Text nodes only, excludes .feature-info-icon
+                }).text().trim();
+            }
+            if (!feature) {
+                feature = $input.attr('value') || $input.attr('name') || '';
+                console.warn('Empty or invalid feature label for checked checkbox in field (ID: ' + config.fieldId + '), using fallback', {
+                    checkboxId: $input.attr('id'),
+                    value: $input.attr('value'),
+                    name: $input.attr('name'),
+                    divHtml: $div.html(),
+                    labelExists: $label.length > 0,
+                    parentClasses: $div.attr('class'),
+                    parentHtml: $div.parent().html().substring(0, 500)
+                });
+            }
         }
+        
         if (!feature) {
             return null;
         }
@@ -1171,6 +1814,25 @@ function updateTrimLevels(model) {
     }
 
     fetchCsvWithRetry(config.csvUrl, model, 3, 1000).then(function(csvText) {
+        // Special handling for TERRAIN model
+        if (model === 'TERRAIN') {
+            // Log the full CSV content to debug data issues
+            console.log('=== FULL TERRAIN CSV CONTENT ===');
+            console.log(csvText);
+            console.log('=== END TERRAIN CSV CONTENT ===');
+            
+            Papa.parse(csvText, {
+                skipEmptyLines: true,
+                complete: function(results) {
+                    console.log(model + ' CSV parsed, rows: ' + results.data.length);
+                    console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
+                    processTerrainTrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
+                }
+            });
+            return;
+        }
+        
+        // Standard handling for other models
         Papa.parse(csvText, {
             header: true,
             skipEmptyLines: true,
@@ -1308,7 +1970,18 @@ function updateTrimLevels(model) {
                         $('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
                             e.preventDefault();
                             console.log('View Trim Levels button clicked for ' + model);
-                            showTrimLevelsPopup(model, trimLevels, config.modelFilter);
+                            console.log('Trim levels being passed:', trimLevels);
+                            console.log('Model filter being passed:', model);
+                            
+                            // Ensure trimLevels is defined and is an array
+                            var safeTrimLevels = Array.isArray(trimLevels) ? trimLevels : [];
+                            if (safeTrimLevels.length === 0) {
+                                console.warn('No trim levels available for ' + model);
+                                alert('No trim levels available for ' + model + '. Please select some features first.');
+                                return;
+                            }
+                            
+                            showTrimLevelsPopup(model, safeTrimLevels, model);
                         });
                         console.log('View Trim Levels button initialized for ' + model);
                     } else {
@@ -1788,17 +2461,29 @@ function initFormBindings() {
                         input.attr('data-last-checked', new Date().toISOString());
                         if (input.attr('id') !== 'input_' + formId + '_' + appointmentConfirmationFieldId) {
                             debounceCheckCustomerInfo();
-                            if (input.attr('id') === 'input_' + formId + '_' + dateFieldId || input.is('input[type="radio"]') || input.attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
-                                updateAppointmentConfirmationField();
-                                if (input.attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
-                                    if (input.val() === 'TERRAIN') {
-                                        populateTerrainFeatures();
-                                        updateTrimLevels('TERRAIN');
-                                    } else {
-                                        terrainPopulated = false;
-                                    }
+                                                    if (input.attr('id') === 'input_' + formId + '_' + dateFieldId || input.is('input[type="radio"]') || input.attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
+                            updateAppointmentConfirmationField();
+                            // Check for GMC model selection (radio buttons)
+                            if (input.is('input[type="radio"]') && input.attr('id') && input.attr('id').indexOf('choice_' + formId + '_' + gmcModelFieldId) !== -1) {
+                                console.log('🎯 GMC model radio button detected:', {
+                                    id: input.attr('id'),
+                                    value: input.val(),
+                                    checked: input.is(':checked'),
+                                    name: input.attr('name')
+                                });
+                                if (input.val() === 'TERRAIN' && input.is(':checked')) {
+                                    console.log('🚗 TERRAIN selected via radio button - calling populateTerrainFeatures');
+                                    console.log('Current time:', new Date().toISOString());
+                                    console.log('terrainPopulated before call:', terrainPopulated);
+                                    populateTerrainFeatures();
+                                    console.log('terrainPopulated after call:', terrainPopulated);
+                                    updateTrimLevels('TERRAIN');
+                                } else if (input.is(':checked')) {
+                                    console.log('Non-TERRAIN GMC model selected: ' + input.val());
+                                    terrainPopulated = false;
                                 }
                             }
+                        }
                         }
                     });
                     console.log('Events on #' + input.attr('id') + ':', $._data(input[0], 'events'));
@@ -1828,17 +2513,29 @@ function initFormBindings() {
                 $(this).attr('data-last-checked', new Date().toISOString());
                 if ($(this).attr('id') !== 'input_' + formId + '_' + appointmentConfirmationFieldId) {
                     debounceCheckCustomerInfo();
-                    if ($(this).attr('id') === 'input_' + formId + '_' + dateFieldId || $(this).is('input[type="radio"]') || $(this).attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
-                        updateAppointmentConfirmationField();
-                        if ($(this).attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
-                            if ($(this).val() === 'TERRAIN') {
-                                populateTerrainFeatures();
-                                updateTrimLevels('TERRAIN');
-                            } else {
-                                terrainPopulated = false;
-                            }
-                        }
-                    }
+                                    if ($(this).attr('id') === 'input_' + formId + '_' + dateFieldId || $(this).is('input[type="radio"]') || $(this).attr('id') === 'input_' + formId + '_' + gmcModelFieldId) {
+                    updateAppointmentConfirmationField();
+                                         // Check for GMC model selection (radio buttons)
+                     if ($(this).is('input[type="radio"]') && $(this).attr('id') && $(this).attr('id').indexOf('choice_' + formId + '_' + gmcModelFieldId) !== -1) {
+                         console.log('🎯 GMC model radio button detected (delegated):', {
+                             id: $(this).attr('id'),
+                             value: $(this).val(),
+                             checked: $(this).is(':checked'),
+                             name: $(this).attr('name')
+                         });
+                         if ($(this).val() === 'TERRAIN' && $(this).is(':checked')) {
+                             console.log('🚗 TERRAIN selected via delegated radio button - calling populateTerrainFeatures');
+                             console.log('Current time:', new Date().toISOString());
+                             console.log('terrainPopulated before call:', terrainPopulated);
+                             populateTerrainFeatures();
+                             console.log('terrainPopulated after call:', terrainPopulated);
+                             updateTrimLevels('TERRAIN');
+                         } else if ($(this).is(':checked')) {
+                             console.log('Non-TERRAIN GMC model selected via delegated: ' + $(this).val());
+                             terrainPopulated = false;
+                         }
+                     }
+                }
                 }
             });
 
@@ -1971,6 +2668,24 @@ function initFormBindings() {
 
         initCustomerInfoBindings();
 
+        // Add specific listener for TERRAIN radio button
+        $(document).on('change', '#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"]', function() {
+            console.log('GMC model radio button changed:', {
+                id: $(this).attr('id'),
+                value: $(this).val(),
+                checked: $(this).is(':checked')
+            });
+            
+            if ($(this).val() === 'TERRAIN' && $(this).is(':checked')) {
+                console.log('TERRAIN radio button detected, calling populateTerrainFeatures');
+                populateTerrainFeatures();
+                updateTrimLevels('TERRAIN');
+            } else if ($(this).is(':checked')) {
+                console.log('Non-TERRAIN GMC model selected, resetting terrain');
+                terrainPopulated = false;
+            }
+        });
+
         $(document).off('gform_post_render').on('gform_post_render', function(event, form_id) {
             if (parseInt(form_id) === parseInt(formId)) {
                 initFormBindings();
@@ -1980,9 +2695,16 @@ function initFormBindings() {
                 setTimeout(function() {
                     checkCustomerInfo();
                     Object.keys(modelConfigs).forEach(function(model) {
-                        if (model === 'TERRAIN' && $('#input_' + formId + '_' + gmcModelFieldId).val() === 'TERRAIN') {
-                            populateTerrainFeatures();
-                            updateTrimLevels(model);
+                        if (model === 'TERRAIN') {
+                            // Check if TERRAIN radio button is selected
+                            var terrainRadio = $('#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"][value="TERRAIN"]');
+                            if (terrainRadio.length && terrainRadio.is(':checked')) {
+                                console.log('TERRAIN radio button is checked, populating features');
+                                populateTerrainFeatures();
+                                updateTrimLevels(model);
+                            } else {
+                                console.log('TERRAIN radio button not checked or not found');
+                            }
                         } else if (model !== 'TERRAIN') {
                             updateTrimLevels(model);
                         }
@@ -2002,9 +2724,16 @@ function initFormBindings() {
                 setTimeout(function() {
                     checkCustomerInfo();
                     Object.keys(modelConfigs).forEach(function(model) {
-                        if (model === 'TERRAIN' && $('#input_' + formId + '_' + gmcModelFieldId).val() === 'TERRAIN') {
-                            populateTerrainFeatures();
-                            updateTrimLevels(model);
+                        if (model === 'TERRAIN') {
+                            // Check if TERRAIN radio button is selected
+                            var terrainRadio = $('#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"][value="TERRAIN"]');
+                            if (terrainRadio.length && terrainRadio.is(':checked')) {
+                                console.log('TERRAIN radio button is checked, populating features');
+                                populateTerrainFeatures();
+                                updateTrimLevels(model);
+                            } else {
+                                console.log('TERRAIN radio button not checked or not found');
+                            }
                         } else if (model !== 'TERRAIN') {
                             updateTrimLevels(model);
                         }
@@ -2297,6 +3026,40 @@ function initFormBindings() {
 	function showTrimLevelsPopup(model, trimLevels, modelFilter) {
     $('#trimLevelsPopup, #trimLevelsOverlay').remove();
 
+    // Safety check for parameters
+    if (!model) {
+        console.error('showTrimLevelsPopup: model parameter is required');
+        alert('Error: Model information is missing. Please refresh the page and try again.');
+        return;
+    }
+    
+    if (!Array.isArray(trimLevels) || trimLevels.length === 0) {
+        console.error('showTrimLevelsPopup: trimLevels must be a non-empty array', {
+            model: model,
+            trimLevels: trimLevels,
+            modelFilter: modelFilter
+        });
+        
+        // Extract just the model name if trimLevels contains HTML
+        var modelName = model;
+        if (typeof trimLevels === 'string' && trimLevels.includes('<')) {
+            // Extract model name from HTML content
+            var modelMatch = trimLevels.match(/Available Trim Levels for (\w+)/);
+            if (modelMatch) {
+                modelName = modelMatch[1];
+            }
+        }
+        
+        alert('Error: No trim levels available for ' + modelName + '. Please select some features first.');
+        return;
+    }
+    
+    console.log('showTrimLevelsPopup called with:', {
+        model: model,
+        trimLevels: trimLevels,
+        modelFilter: modelFilter
+    });
+
     var csvUrl = 'https://hutchinsonautoteam.com/usedmacon/newfeed.csv';
     fetchCsvWithRetry(csvUrl, 'New Inventory Feed', 3, 1000).then(function(csvText) {
         Papa.parse(csvText, {
@@ -2317,6 +3080,13 @@ function initFormBindings() {
                 var filteredVehicles = results.data.filter(function(row) {
                     var series = row['Series'] ? row['Series'].trim() : '';
                     var vehicleModel = row['Model'] ? row['Model'].trim() : '';
+                    
+                    // Safety check for trimLevels
+                    if (!Array.isArray(trimLevels) || trimLevels.length === 0) {
+                        console.error('trimLevels is not a valid array in filter function:', trimLevels);
+                        return false;
+                    }
+                    
                     var matchesTrim = trimLevels.some(function(trim) {
                         return model === 'K4' ? trim.toUpperCase() === series.toUpperCase() : fuzzyMatch(trim, series, model, series);
                     });
@@ -3950,7 +4720,8 @@ function showVehicleInfo(isKiaField) {
     console.log('Popup content loaded for ' + (isKiaField ? 'Kia stock field (ID: ' + stockKiaFieldId + ')' : 'stock field (ID: ' + stockFieldId + ')'));
 }
 
-loadFeatureDescriptions();
+    loadFeatureDescriptions();
+    loadTerrainFeatureDescriptions();
 initFormBindings();
 updateSelectedName();
 
@@ -3966,6 +4737,177 @@ form.on('submit', function(e) {
         tradeAltData: serviceData.tradeAlt,
         newData: serviceData.new
     });
+});
+
+// Test function for debugging
+window.testTerrainDebug = function() {
+    console.log('=== Manual Terrain Debug Test ===');
+    console.log('Form ID:', formId);
+    console.log('terrainHtmlBlockFieldId:', terrainHtmlBlockFieldId);
+    console.log('terrainPopulated:', terrainPopulated);
+    console.log('modelConfigs.TERRAIN:', modelConfigs['TERRAIN']);
+    
+    // Try all possible selectors
+    var selectors = [
+        '#field_' + formId + '_' + terrainHtmlBlockFieldId,
+        '#field_' + formId + '_137',
+        '#input_' + formId + '_137',
+        '[id*="137"]'
+    ];
+    
+    selectors.forEach(function(selector, index) {
+        var elements = $(selector);
+        console.log('Selector ' + index + ' (' + selector + '):', {
+            count: elements.length,
+            ids: elements.map(function() { return this.id; }).get()
+        });
+    });
+    
+    var htmlBlock = $('#field_' + formId + '_' + terrainHtmlBlockFieldId);
+    if (!htmlBlock.length) {
+        htmlBlock = $('#field_' + formId + '_137');
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('[id*="137"]').first();
+    }
+    
+    console.log('Final HTML Block:', {
+        found: htmlBlock.length > 0,
+        id: htmlBlock.attr('id'),
+        visible: htmlBlock.is(':visible'),
+        content: htmlBlock.html() ? htmlBlock.html().substring(0, 500) : 'N/A'
+    });
+    
+    var checkboxes = htmlBlock.find('input[type="checkbox"]');
+    console.log('Checkboxes found before population:', checkboxes.length);
+    
+    if (typeof populateTerrainFeatures === 'function') {
+        console.log('Calling populateTerrainFeatures...');
+        populateTerrainFeatures();
+        
+        // Check again after population
+        var checkboxesAfter = htmlBlock.find('input[type="checkbox"]');
+        console.log('Checkboxes found after population:', checkboxesAfter.length);
+        checkboxesAfter.each(function(i) {
+            console.log('Checkbox ' + i + ':', {
+                id: $(this).attr('id'),
+                name: $(this).attr('name'),
+                value: $(this).attr('value'),
+                checked: $(this).is(':checked')
+            });
+        });
+    } else {
+        console.log('populateTerrainFeatures function not found');
+    }
+    
+    console.log('Calling updateTrimLevels...');
+    updateTrimLevels('TERRAIN');
+};
+
+// Force populate function for debugging
+window.forcePopulateTerrainFeatures = function() {
+    console.log('=== Force Populating Terrain Features ===');
+    terrainPopulated = false; // Reset the flag
+    populateTerrainFeatures();
+};
+
+// Manual terrain creation function for debugging
+window.createTerrainCheckboxesManually = function() {
+    console.log('=== Manual Terrain Checkboxes Creation ===');
+    
+    // Find field 137 manually using multiple methods
+    var field137 = null;
+    var selectors = [
+        '#field_3_137',
+        '[id*="field"][id*="137"]',
+        '[id*="137"]'
+    ];
+    
+    for (var i = 0; i < selectors.length; i++) {
+        field137 = $(selectors[i]);
+        if (field137.length > 0) {
+            console.log('✅ Found field 137 using selector:', selectors[i]);
+            break;
+        }
+    }
+    
+    if (!field137 || field137.length === 0) {
+        console.log('❌ Field 137 not found');
+        return;
+    }
+    
+    console.log('📍 Field 137 found:', field137.length > 0);
+    console.log('📍 Field 137 ID:', field137.attr('id'));
+    console.log('📍 Field 137 visible:', field137.is(':visible'));
+    console.log('📍 Field 137 content length:', field137.html().length);
+    
+    // Create sample checkboxes manually
+    var sampleHtml = '<div class="feature-groups">' +
+        '<div class="feature-column"><h4>EXTERIOR</h4><ul class="gfield_checkbox">' +
+        '<li class="gchoice"><input type="checkbox" id="test_terrain_1" value="LED Headlights" data-category="EXTERIOR"><label for="test_terrain_1">LED Headlights</label></li>' +
+        '<li class="gchoice"><input type="checkbox" id="test_terrain_2" value="Fog Lights" data-category="EXTERIOR"><label for="test_terrain_2">Fog Lights</label></li>' +
+        '</ul></div>' +
+        '<div class="feature-column"><h4>INTERIOR</h4><ul class="gfield_checkbox">' +
+        '<li class="gchoice"><input type="checkbox" id="test_terrain_3" value="Heated Seats" data-category="INTERIOR"><label for="test_terrain_3">Heated Seats</label></li>' +
+        '</ul></div>' +
+        '</div>';
+    
+    field137.html(sampleHtml);
+    console.log('✅ Sample checkboxes created');
+    console.log('✅ Checkboxes count:', field137.find('input[type="checkbox"]').length);
+    
+    // Add event listeners
+    field137.find('input[type="checkbox"]').on('change', function() {
+        console.log('🔄 Checkbox changed:', $(this).attr('value'), $(this).is(':checked'));
+    });
+    
+    // Force populate real terrain features
+    console.log('🔧 Now forcing real terrain features...');
+    terrainPopulated = false;
+    populateTerrainFeatures();
+};
+
+// Manual function to check current state
+window.checkTerrainState = function() {
+    console.log('=== Terrain State Check ===');
+    console.log('terrainPopulated:', terrainPopulated);
+    console.log('modelConfigs.TERRAIN:', modelConfigs['TERRAIN']);
+    
+    // Check for field 137
+    var field137 = $('#field_3_137');
+    console.log('Field 137 exists:', field137.length > 0);
+    if (field137.length > 0) {
+        console.log('Field 137 visible:', field137.is(':visible'));
+        console.log('Field 137 content length:', field137.html().length);
+        console.log('Field 137 checkboxes:', field137.find('input[type="checkbox"]').length);
+    }
+    
+    // Check for terrain checkboxes anywhere
+    var terrainCheckboxes = $('input[type="checkbox"][id*="terrain"]');
+    console.log('Terrain checkboxes in document:', terrainCheckboxes.length);
+    
+    // Check selected model
+    var selectedModel = $('input[name="input_3_107"]:checked').val();
+    console.log('Selected model:', selectedModel);
+};
+
+console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually(), checkTerrainState()');
+
+// GLOBAL RADIO BUTTON LISTENER FOR DEBUGGING
+$(document).on('change', 'input[type="radio"]', function() {
+    console.log('🔍 GLOBAL RADIO CHANGE DETECTED:');
+    console.log('  - ID:', $(this).attr('id'));
+    console.log('  - Name:', $(this).attr('name'));
+    console.log('  - Value:', $(this).val());
+    console.log('  - Checked:', $(this).is(':checked'));
+    console.log('  - Expected GMC field pattern:', 'choice_' + formId + '_' + gmcModelFieldId);
+    console.log('  - Matches pattern:', $(this).attr('id') && $(this).attr('id').indexOf('choice_' + formId + '_' + gmcModelFieldId) !== -1);
+    
+    if ($(this).val() === 'TERRAIN' && $(this).is(':checked')) {
+        console.log('🚨 TERRAIN DETECTED IN GLOBAL LISTENER - FORCING POPULATE');
+        terrainPopulated = false;
+        populateTerrainFeatures();
+    }
 });
 
 });
