@@ -811,8 +811,10 @@ jQuery(document).ready(function($) {
     var terrainFeatureDescriptions = {};
     function loadTerrainFeatureDescriptions() {
         var csvUrl = 'https://www.hutchinsonautoteam.com/gmcmodels/gmcterraindescriptions.csv';
+        console.log('Loading GMC Terrain descriptions from:', csvUrl);
         fetchCsvWithRetry(csvUrl, 'GMC Terrain Feature Descriptions', 3, 1000).then(function(csvText) {
             console.log('GMC Terrain descriptions CSV fetched successfully, length:', csvText.length);
+            console.log('First 500 characters of CSV:', csvText.substring(0, 500));
             
             // Parse the CSV - handle complex format with escaped quotes and multi-line descriptions
             terrainFeatureDescriptions = {};
@@ -1653,7 +1655,12 @@ jQuery(document).ready(function($) {
         // Use GMC Terrain descriptions for TERRAIN model, otherwise use KIA descriptions
         var description;
         if (model === 'TERRAIN') {
+            console.log('TERRAIN model detected, using GMC descriptions');
+            console.log('Feature to lookup:', feature);
+            console.log('Feature uppercase:', feature.toUpperCase());
+            console.log('Available terrain descriptions:', Object.keys(terrainFeatureDescriptions));
             description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No description available for ' + feature;
+            console.log('Found description:', description);
         } else {
             description = featureDescriptions[feature] || 'No description available for ' + feature;
         }
