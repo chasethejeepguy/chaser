@@ -1060,28 +1060,21 @@ jQuery(document).ready(function($) {
                     catFeatures.forEach(function(feature, index) {
                         var uniqueId = 'choice_3_terrain_' + globalIndex;
                         var inputName = 'input_terrain_' + globalIndex;
-                        
-                        // Debug the feature value being set
-                        console.log('Setting checkbox value for ' + category + '[' + index + ']:', {
-                            feature: feature,
-                            featureLength: feature.length,
-                            uniqueId: uniqueId,
-                            inputName: inputName
-                        });
-                        
-                        // Use simple ID-based value and store feature index instead of trying to escape complex strings
                         var simpleValue = 'terrain_feature_' + globalIndex;
                         
-                        // Store the feature in a global mapping instead of in HTML attributes
+                        // Initialize global feature mapping
                         if (!window.terrainFeatureMap) {
                             window.terrainFeatureMap = {};
                         }
                         window.terrainFeatureMap[simpleValue] = feature;
                         
-                        html += '<div class="gchoice gchoice_terrain_' + globalIndex + '">\
-                            <input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">\
-                            <label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>\
-                        </div>';
+                        // Build HTML using simple string concatenation to avoid any quote issues
+                        var divStart = '<div class="gchoice gchoice_terrain_' + globalIndex + '">';
+                        var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
+                        var labelTag = '<label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>';
+                        var divEnd = '</div>';
+                        
+                        html += divStart + inputTag + labelTag + divEnd;
                         globalIndex++;
                     });
                     html += '</div></div>';
