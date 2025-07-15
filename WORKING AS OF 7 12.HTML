@@ -810,7 +810,7 @@ jQuery(document).ready(function($) {
     // Load GMC Terrain feature descriptions from CSV
     var terrainFeatureDescriptions = {};
     function loadTerrainFeatureDescriptions() {
-        var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcterrainfeaturedescriptions.csv';
+        var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcterrainfeaturedescriptions.CSV';
         console.log('Loading GMC Terrain descriptions from:', csvUrl);
         fetchCsvWithRetry(csvUrl, 'GMC Terrain Feature Descriptions', 3, 1000).then(function(csvText) {
             console.log('GMC Terrain descriptions CSV fetched successfully, length:', csvText.length);
@@ -5000,7 +5000,14 @@ window.testTerrainDescriptions = function() {
     loadTerrainFeatureDescriptions();
 };
 
-console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually(), checkTerrainState(), testTerrainDescriptions()');
+// Force reload terrain descriptions
+window.reloadTerrainDescriptions = function() {
+    console.log('🔄 Forcing reload of terrain descriptions...');
+    terrainFeatureDescriptions = {};
+    loadTerrainFeatureDescriptions();
+};
+
+console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually(), checkTerrainState(), testTerrainDescriptions(), reloadTerrainDescriptions()');
 
 // GLOBAL RADIO BUTTON LISTENER FOR DEBUGGING
 $(document).on('change', 'input[type="radio"]', function() {
