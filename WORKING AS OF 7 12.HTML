@@ -819,40 +819,36 @@ jQuery(document).ready(function($) {
             // Parse the CSV - handle complex format with escaped quotes and multi-line descriptions
             terrainFeatureDescriptions = {};
             
-            // Split by lines but handle multi-line entries
-            var entries = csvText.split('\n"').filter(function(entry) { return entry.trim(); });
+            // Split by lines and process each line
+            var lines = csvText.split('\n').filter(function(line) { return line.trim(); });
             
-            entries.forEach(function(entry, index) {
+            lines.forEach(function(line, index) {
                 try {
-                    // Add back the quote if it was removed by split (except for first entry)
-                    if (index > 0 && !entry.startsWith('"')) {
-                        entry = '"' + entry;
-                    }
-                    
+                    // Each line should be in format: "FEATURE NAME (DESCRIPTION)"
                     // Handle escaped quotes in feature names (e.g., "19"" becomes 19")
-                    var match = entry.match(/^"([^"]*(?:""[^"]*)*)" \((.+)\)$/s);
+                    var match = line.match(/^"([^"]*(?:""[^"]*)*)" \((.+)\)$/);
                     if (match) {
                         var feature = match[1].replace(/""/g, '"').trim(); // Unescape quotes
-                        var description = match[2].replace(/\n/g, ' ').trim(); // Remove line breaks
+                        var description = match[2].trim(); // Get description
                         
                         // Store with case-insensitive key for matching
                         terrainFeatureDescriptions[feature.toUpperCase()] = description;
                         console.log('Loaded GMC Terrain description for:', feature);
                     } else {
                         // Try alternative parsing for entries without quotes
-                        var altMatch = entry.match(/^([^(]+) \((.+)\)$/s);
+                        var altMatch = line.match(/^([^(]+) \((.+)\)$/);
                         if (altMatch) {
                             var feature = altMatch[1].trim();
-                            var description = altMatch[2].replace(/\n/g, ' ').trim();
+                            var description = altMatch[2].trim();
                             
                             terrainFeatureDescriptions[feature.toUpperCase()] = description;
                             console.log('Loaded GMC Terrain description (alt format) for:', feature);
                         } else {
-                            console.warn('Could not parse terrain description entry:', entry.substring(0, 100));
+                            console.warn('Could not parse terrain description line:', line.substring(0, 100));
                         }
                     }
                 } catch (error) {
-                    console.error('Error parsing terrain description entry:', error, entry.substring(0, 100));
+                    console.error('Error parsing terrain description line:', error, line.substring(0, 100));
                 }
             });
             
@@ -1249,11 +1245,20 @@ jQuery(document).ready(function($) {
                     var feature = $(this).data('feature');
                     console.log('=== TERRAIN FEATURE INFO ICON CLICKED ===');
                     console.log('Feature clicked:', feature);
-                    console.log('Feature length:', feature.length);
+                    console.log('Feature type:', typeof feature);
+                    console.log('Feature length:', feature ? feature.length : 'undefined');
                     console.log('Available terrain descriptions:', Object.keys(terrainFeatureDescriptions));
                     console.log('Total descriptions available:', Object.keys(terrainFeatureDescriptions).length);
+                    console.log('All descriptions:', terrainFeatureDescriptions);
+                    
+                    // Handle case where feature might be undefined or not a string
+                    if (!feature || typeof feature !== 'string') {
+                        console.error('Invalid feature:', feature);
+                        showFeatureDescription('Unknown Feature', 'Feature information not available');
+                        return;
+                    }
+                    
                     console.log('Looking for feature (uppercase):', feature.toUpperCase());
-                    console.log('Sample descriptions:', terrainFeatureDescriptions);
                     // Use GMC Terrain descriptions instead of KIA descriptions (case-insensitive)
                     var description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No GMC Terrain description available for ' + feature;
                     console.log('Found description:', description);
