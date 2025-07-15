@@ -629,6 +629,8 @@ jQuery(document).ready(function($) {
     var terrainHtmlBlockFieldId = 137;
     var acadiaCheckboxFieldId = 130;
     var acadiaHtmlBlockFieldId = 138;
+    var yukonCheckboxFieldId = 131;
+    var yukonHtmlBlockFieldId = 139;
 
     // Global variables
     var vehicleData = null;
@@ -641,6 +643,7 @@ jQuery(document).ready(function($) {
     var trimLevelsData = {};
     var terrainPopulated = false;
     var acadiaPopulated = false;
+    var yukonPopulated = false;
 
     // Model to field ID, CSV URL, and model filter mappings
     var modelConfigs = {
@@ -989,6 +992,68 @@ jQuery(document).ready(function($) {
         }).catch(function(error) {
             console.error('❌ Fetch error for GMC Acadia Feature Descriptions:', error.message);
             acadiaFeatureDescriptions = {};
+            throw error;
+        });
+    }
+
+    // Load GMC Yukon feature descriptions from CSV
+    var yukonFeatureDescriptions = {};
+    function loadYukonFeatureDescriptions() {
+        var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcyukondescriptions.csv';
+        console.log('Loading GMC Yukon descriptions from:', csvUrl);
+        return fetchCsvWithRetry(csvUrl, 'GMC Yukon Feature Descriptions', 3, 1000).then(function(csvText) {
+            console.log('GMC Yukon descriptions CSV fetched successfully, length:', csvText.length);
+            console.log('First 500 characters of CSV:', csvText.substring(0, 500));
+            
+            // Parse the new CSV format with curly braces: {FEATURE_NAME :Description}
+            yukonFeatureDescriptions = {};
+            
+            // Find all entries enclosed in curly braces - more robust regex
+            var curlyBraceRegex = /\{([^}]+)\}/g;
+            var matches = [];
+            var match;
+            
+            while ((match = curlyBraceRegex.exec(csvText)) !== null) {
+                matches.push(match[1]);
+            }
+            
+            console.log('📊 Found', matches.length, 'GMC Yukon description entries');
+            
+            if (matches.length === 0) {
+                console.warn('❌ No curly brace entries found in GMC Yukon descriptions CSV');
+            }
+            
+            // Parse each feature description
+            matches.forEach(function(match, index) {
+                var separatorIndex = match.indexOf(':');
+                if (separatorIndex === -1) {
+                    console.log('❌ Could not find ":" separator in:', match.substring(0, 100));
+                    return;
+                }
+                
+                var featureName = match.substring(0, separatorIndex).trim();
+                var description = match.substring(separatorIndex + 1).trim();
+                
+                if (featureName && description) {
+                    yukonFeatureDescriptions[featureName.toUpperCase()] = description;
+                    console.log('✅ Loaded GMC Yukon description (alt format) for:', featureName);
+                } else {
+                    console.log('❌ Invalid feature data:', { featureName: featureName, description: description });
+                }
+            });
+            
+            console.log('GMC Yukon Feature Descriptions loaded, features:', Object.keys(yukonFeatureDescriptions).length);
+            console.log('Sample features loaded:', Object.keys(yukonFeatureDescriptions).slice(0, 5));
+            console.log('All yukon features loaded:', Object.keys(yukonFeatureDescriptions));
+            if (Object.keys(yukonFeatureDescriptions).length === 0) {
+                console.warn('❌ No GMC Yukon descriptions were parsed from CSV');
+            } else {
+                console.log('✅ SUCCESS: GMC Yukon descriptions loaded successfully!');
+            }
+            return yukonFeatureDescriptions;
+        }).catch(function(error) {
+            console.error('❌ Fetch error for GMC Yukon Feature Descriptions:', error.message);
+            yukonFeatureDescriptions = {};
             throw error;
         });
     }
@@ -2268,6 +2333,520 @@ function populateTerrainFeaturesAfterDescriptions() {
         trimLevelsData[model] = matchingTrimLevels;
     }
 
+    // Yukon populate functions
+    function populateYukonFeatures() {
+        console.log('=== populateYukonFeatures called ===');
+        console.log('Current yukonPopulated flag:', yukonPopulated);
+        console.log('Form ID:', formId);
+        console.log('yukonHtmlBlockFieldId:', yukonHtmlBlockFieldId);
+        
+        if (yukonPopulated) {
+            console.log('Yukon features already populated, skipping');
+            return;
+        }
+        
+        // Check if descriptions are loaded
+        if (!yukonFeatureDescriptions || Object.keys(yukonFeatureDescriptions).length === 0) {
+            console.log('🚨 Yukon descriptions not loaded, loading first...');
+            // Load descriptions and then populate features
+            loadYukonFeatureDescriptions().then(function() {
+                console.log('✅ Descriptions loaded, now populating features...');
+                populateYukonFeaturesAfterDescriptions();
+            }).catch(function(error) {
+                console.error('❌ Failed to load descriptions:', error);
+                // Continue anyway with basic feature names
+                populateYukonFeaturesAfterDescriptions();
+            });
+            return;
+        }
+        
+        populateYukonFeaturesAfterDescriptions();
+    }
+
+    function populateYukonFeaturesAfterDescriptions() {
+        console.log('=== populateYukonFeaturesAfterDescriptions called ===');
+        
+        var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/yukon.csv';
+        console.log('Loading yukon features from:', csvUrl);
+        
+        Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                console.log('Yukon CSV parsed for population, rows:', results.data.length);
+                console.log('First few rows:', results.data.slice(0, 3));
+                
+                // Parse the CSV data similar to Acadia
+                var featuresByCategory = {};
+                var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+                
+                // Process each row to build feature categories
+                results.data.forEach(function(row, rowIndex) {
+                    var trimLevelsCell = row['TRIM LEVELS FOR {EXTERIOR}'] || row['TRIM LEVELS FOR {INTERIOR}'] || row['TRIM LEVELS FOR {MECHANICAL}'] || row['TRIM LEVELS FOR {SAFETY}'] || row['TRIM LEVELS FOR {PACKAGES}'];
+                    
+                    if (trimLevelsCell) {
+                        var categoryMatch = trimLevelsCell.match(/TRIM LEVELS FOR \{([^}]+)\}/);
+                        if (categoryMatch) {
+                            var category = categoryMatch[1];
+                            console.log('Row ' + rowIndex + ': Parsed category:', category);
+                            
+                            // Extract features from this row (all columns except the first)
+                            var features = [];
+                            Object.keys(row).forEach(function(key) {
+                                if (key !== 'TRIM LEVELS FOR {EXTERIOR}' && key !== 'TRIM LEVELS FOR {INTERIOR}' && key !== 'TRIM LEVELS FOR {MECHANICAL}' && key !== 'TRIM LEVELS FOR {SAFETY}' && key !== 'TRIM LEVELS FOR {PACKAGES}' && row[key] && row[key].trim()) {
+                                    features.push(row[key].trim());
+                                }
+                            });
+                            
+                            console.log('Features for ' + category + ':', features.slice(0, 5));
+                            console.log('Raw features before cleaning:', features.slice(0, 5));
+                            
+                            // Clean and store features
+                            var cleanFeatures = features.filter(function(feature) {
+                                return feature && feature.trim() && !feature.match(/^,+$/);
+                            });
+                            
+                            featuresByCategory[category] = cleanFeatures;
+                            console.log('Stored category:', category, 'with', cleanFeatures.length, 'features');
+                        }
+                    }
+                });
+                
+                console.log('Feature groups summary:', Object.keys(featuresByCategory).map(function(cat) {
+                    return cat + ': ' + featuresByCategory[cat].length + ' features';
+                }));
+                
+                // Build HTML for yukon features
+                console.log('Building HTML for yukon features...');
+                var html = '<div class="feature-groups">';
+                var globalIndex = 0;
+                
+                // Initialize global feature mapping
+                if (!window.yukonFeatureMap) {
+                    window.yukonFeatureMap = {};
+                }
+                
+                categories.forEach(function(category) {
+                    if (featuresByCategory[category] && featuresByCategory[category].length > 0) {
+                        console.log('Building HTML for category:', category, 'with', featuresByCategory[category].length, 'features');
+                        
+                        html += '<div class="feature-column">';
+                        html += '<h4>' + category + '</h4>';
+                        html += '<div class="gfield_checkbox">';
+                        
+                        featuresByCategory[category].forEach(function(feature) {
+                            var inputName = 'input_yukon_' + globalIndex;
+                            var simpleValue = 'yukon_feature_' + globalIndex;
+                            
+                            window.yukonFeatureMap[simpleValue] = feature;
+                            
+                            // Try to find the full feature name from yukon descriptions
+                            var fullFeatureName = feature;
+                            if (yukonFeatureDescriptions && Object.keys(yukonFeatureDescriptions).length > 0) {
+                                // First try exact match
+                                var exactMatch = yukonFeatureDescriptions[String(feature).toUpperCase()];
+                                if (exactMatch) {
+                                    fullFeatureName = feature; // Use original since we have exact match
+                                    console.log('✅ Found exact match for:', feature);
+                                } else {
+                                    // Try partial matching for backwards compatibility
+                                    var matchedKey = Object.keys(yukonFeatureDescriptions).find(function(key) {
+                                        return key.includes(String(feature).toUpperCase()) || String(feature).toUpperCase().includes(key);
+                                    });
+                                    if (matchedKey) {
+                                        fullFeatureName = feature; // Keep original name but we have description
+                                        console.log('✅ Found partial match for:', feature);
+                                    } else {
+                                        console.log('❌ No match found for:', feature);
+                                    }
+                                }
+                            } else {
+                                console.log('❌ No match found for:', feature);
+                            }
+                            
+                            html += '<div class="gchoice gchoice_yukon_' + globalIndex + '">';
+                            html += '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="choice_3_yukon_' + globalIndex + '">';
+                            html += '<label for="choice_3_yukon_' + globalIndex + '" id="label_yukon_' + globalIndex + '">' + fullFeatureName;
+                            html += ' <span class="feature-info-icon" data-feature="' + feature + '" style="cursor: pointer; color: #007cba; font-weight: bold; margin-left: 5px;" title="Click for feature information">ℹ️</span>';
+                            html += '</label>';
+                            html += '</div>';
+                            
+                            globalIndex++;
+                        });
+                        
+                        html += '</div>';
+                        html += '</div>';
+                    }
+                });
+                
+                html += '</div>';
+                
+                // Add CSS for feature groups layout
+                html += '<style>';
+                html += '.feature-groups { display: flex; flex-wrap: wrap; gap: 20px; }';
+                html += '.feature-column { flex: 1; min-width: 200px; }';
+                html += '.feature-column h4 { margin: 0 0 10px 0; padding: 5px; background: #f0f0f0; border-radius: 4px; }';
+                html += '.gchoice[class*="gchoice_yukon_"] { margin-bottom: 4% !important; padding-bottom: 4px; }';
+                html += '.gfield_checkbox .feature-info-icon { pointer-events: auto !important; }';
+                html += '</style>';
+                
+                console.log('🔨 Generated HTML length:', html.length);
+                console.log('🔨 Generated HTML sample:', html.substring(0, 200) + '...');
+                
+                // Insert the HTML
+                var htmlBlock = $('#field_' + formId + '_' + yukonHtmlBlockFieldId);
+                if (htmlBlock.length) {
+                    console.log('Found HTML block, updating content...');
+                    
+                    // Check for placeholder replacement
+                    var htmlContent = htmlBlock.html();
+                    console.log('📝 HTML Block content before replacement (length: ' + htmlContent.length + '):', htmlContent);
+                    console.log('🔍 Looking for placeholder: {yukon feature checkboxes}');
+                    console.log('🔍 Placeholder found:', htmlContent.indexOf('{yukon feature checkboxes}') !== -1);
+                    
+                    if (htmlContent.indexOf('{yukon feature checkboxes}') !== -1) {
+                        htmlContent = htmlContent.replace('{yukon feature checkboxes}', html);
+                        htmlBlock.html(htmlContent);
+                        console.log('✅ Replaced {yukon feature checkboxes} placeholder in field 139');
+                    } else {
+                        // If no placeholder found, replace entire content
+                        htmlBlock.html(html);
+                        console.log('⚠️ No placeholder found, replaced entire HTML block content');
+                    }
+                    
+                    console.log('HTML block updated');
+                    
+                    // Mark as populated
+                    yukonPopulated = true;
+                    console.log('✅ Yukon features populated successfully!');
+                    
+                    // Store the CSV data for trim level matching
+                    var yukonCsvData = results.data;
+                    
+                    // Initial trim level check (no features selected)
+                    checkYukonMatchingTrimLevels(yukonCsvData);
+                    
+                    // Bind change events
+                    htmlBlock.find('input[type="checkbox"]').on('change', function() {
+                        var featureValue = this.value;
+                        var featureName = window.yukonFeatureMap[featureValue];
+                        var category = $(this).data('category');
+                        console.log('YUKON feature changed:', featureName, 'Category:', category, 'Checked:', this.checked);
+                        
+                        // Check for matching trim levels
+                        checkYukonMatchingTrimLevels(yukonCsvData);
+                    });
+
+                    htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var feature = $(this).attr('data-feature');
+                        console.log('=== YUKON FEATURE INFO ICON CLICKED ===');
+                        console.log('Feature clicked:', feature);
+                        console.log('Feature type:', typeof feature);
+                        console.log('Feature length:', feature ? feature.length : 'undefined');
+                        console.log('Available yukon descriptions:', Object.keys(yukonFeatureDescriptions));
+                        console.log('Total descriptions available:', Object.keys(yukonFeatureDescriptions).length);
+                        console.log('All descriptions:', yukonFeatureDescriptions);
+                        
+                        // Handle case where feature might be undefined or not a string
+                        if (!feature || typeof feature !== 'string') {
+                            console.error('Invalid feature:', feature);
+                            showFeatureDescription('Unknown Feature', 'Feature information not available');
+                            return;
+                        }
+                        
+                        console.log('Looking for feature (uppercase):', feature.toUpperCase());
+                        
+                        // Normalize feature name to handle common typos
+                        function normalizeFeatureName(featureName) {
+                            return featureName
+                                .replace(/INFOTAINTMENT/g, 'INFOTAINMENT')  // Fix common typo
+                                .replace(/\s+/g, ' ')                       // Normalize whitespace
+                                .trim();
+                        }
+                        
+                        var normalizedFeature = normalizeFeatureName(feature.toUpperCase());
+                        console.log('Normalized feature:', normalizedFeature);
+                        
+                        // Try exact match first with normalized feature
+                        var description = yukonFeatureDescriptions[normalizedFeature];
+                        if (description) {
+                            console.log('✅ Found exact match with normalized feature:', normalizedFeature);
+                        }
+                        
+                        // If no exact match, try with original feature name
+                        if (!description) {
+                            description = yukonFeatureDescriptions[feature.toUpperCase()];
+                            if (description) {
+                                console.log('✅ Found exact match with original feature:', feature.toUpperCase());
+                            }
+                        }
+                        
+                        // If still no match, try partial matching with normalized names
+                        if (!description) {
+                            console.log('No exact match found, trying partial matching...');
+                            console.log('Searching for normalized feature:', normalizedFeature);
+                            var matchedKey = Object.keys(yukonFeatureDescriptions).find(function(key) {
+                                var normalizedKey = normalizeFeatureName(key);
+                                var keyContainsFeature = normalizedKey.includes(normalizedFeature);
+                                var featureContainsKey = normalizedFeature.includes(normalizedKey);
+                                
+                                if (keyContainsFeature || featureContainsKey) {
+                                    console.log('Partial match candidate:', key, '(normalized:', normalizedKey, ')');
+                                    return true;
+                                }
+                                return false;
+                            });
+                            if (matchedKey) {
+                                description = yukonFeatureDescriptions[matchedKey];
+                                console.log('✅ Found partial match:', matchedKey);
+                            } else {
+                                console.log('❌ No partial match found');
+                            }
+                        }
+                        
+                        // If still no match, provide fallback
+                        if (!description) {
+                            description = 'No GMC Yukon description available for ' + feature;
+                            console.log('No match found, using fallback description');
+                        }
+                        
+                        console.log('Found description:', description);
+                        console.log('=== END YUKON FEATURE INFO DEBUG ===');
+                        
+                        showFeatureDescription(feature, description);
+                    });
+                } else {
+                    console.error('❌ HTML block not found for field ID:', yukonHtmlBlockFieldId);
+                }
+            },
+            error: function(error) {
+                console.error('❌ Error parsing Yukon CSV:', error);
+            }
+        });
+    }
+
+    // Check for matching Yukon trim levels
+    function checkYukonMatchingTrimLevels(csvData) {
+        var model = 'YUKON';
+        var trimLevels = ['AT4', 'DENALI', 'ELEVATION', 'AT4 ULTIMATE', 'DENALI ULTIMATE'];
+        var htmlBlockFieldId = 69; // Field ID for {TRIM LEVELS} replacement
+        
+        // Get selected features
+        var selectedFeatures = [];
+        $('#field_' + formId + '_' + yukonHtmlBlockFieldId + ' input[type="checkbox"]:checked').each(function() {
+            var featureValue = $(this).val();
+            var featureName = window.yukonFeatureMap[featureValue];
+            if (featureName) {
+                selectedFeatures.push(featureName);
+            }
+        });
+        
+        console.log('Selected YUKON features:', selectedFeatures);
+        
+        if (selectedFeatures.length === 0) {
+            $('#field_' + formId + '_' + htmlBlockFieldId).html('<p>Select features to see matching trim levels</p>');
+            return;
+        }
+        
+        var matchingTrimLevels = [];
+        var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+        var featureToColumnMap = {};
+        var featureToCategoryMap = {};
+        var trimLevelRows = {};
+        var trimLevelRowsByCategory = {};
+        var currentCategory = null;
+        
+        // Parse the CSV data to map features to columns and find trim level rows
+        csvData.forEach(function(row, rowIndex) {
+            var trimLevelsCell = row['TRIM LEVELS FOR {EXTERIOR}'] || row['TRIM LEVELS FOR {INTERIOR}'] || row['TRIM LEVELS FOR {MECHANICAL}'] || row['TRIM LEVELS FOR {SAFETY}'] || row['TRIM LEVELS FOR {PACKAGES}'];
+            
+            if (trimLevelsCell) {
+                var categoryMatch = trimLevelsCell.match(/TRIM LEVELS FOR \{([^}]+)\}/);
+                if (categoryMatch) {
+                    currentCategory = categoryMatch[1];
+                    console.log('YUKON Processing category:', currentCategory);
+                    trimLevelRowsByCategory[currentCategory] = {};
+                    
+                    // Map features to column indices for this category
+                    var columnIndex = 0;
+                    Object.keys(row).forEach(function(key) {
+                        if (key !== 'TRIM LEVELS FOR {EXTERIOR}' && key !== 'TRIM LEVELS FOR {INTERIOR}' && key !== 'TRIM LEVELS FOR {MECHANICAL}' && key !== 'TRIM LEVELS FOR {SAFETY}' && key !== 'TRIM LEVELS FOR {PACKAGES}' && row[key] && row[key].trim()) {
+                            var feature = row[key].trim();
+                            if (feature && !feature.match(/^,+$/)) {
+                                featureToColumnMap[feature] = columnIndex;
+                                featureToCategoryMap[feature] = currentCategory;
+                                columnIndex++;
+                            }
+                        }
+                    });
+                }
+            } else {
+                // Check if this row contains trim level data
+                var firstCell = Object.values(row)[0];
+                if (firstCell && trimLevels.some(function(level) {
+                    return firstCell.includes(level);
+                })) {
+                    var trimLevel = null;
+                    trimLevels.forEach(function(level) {
+                        if (firstCell.includes(level)) {
+                            trimLevel = level;
+                        }
+                    });
+                    
+                    if (trimLevel) {
+                        console.log('YUKON Found trim level row:', trimLevel);
+                        var rowValues = Object.values(row);
+                        trimLevelRows[trimLevel] = rowValues;
+                        
+                        // Also store by category if we have a current category
+                        if (currentCategory) {
+                            if (!trimLevelRowsByCategory[currentCategory]) {
+                                trimLevelRowsByCategory[currentCategory] = {};
+                            }
+                            trimLevelRowsByCategory[currentCategory][trimLevel] = rowValues;
+                        }
+                    }
+                }
+            }
+        });
+        
+        console.log('YUKON Feature to column mapping:', featureToColumnMap);
+        console.log('YUKON Feature to category mapping:', featureToCategoryMap);
+        console.log('YUKON Trim level rows:', Object.keys(trimLevelRows));
+        
+        // Check each trim level
+        trimLevels.forEach(function(trimLevel) {
+            if (trimLevelRows[trimLevel]) {
+                var hasAllFeatures = true;
+                var featureResults = [];
+                
+                selectedFeatures.forEach(function(feature) {
+                    var columnIndex = featureToColumnMap[feature];
+                    var matchedFeature = feature;
+                    
+                    // If exact match not found, try fuzzy matching
+                    if (columnIndex === undefined) {
+                        console.log('YUKON Feature "' + feature + '" not found in column mapping, trying fuzzy matching...');
+                        var bestMatch = null;
+                        var bestSimilarity = 0;
+                        
+                        Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+                            var similarity = fuzzyMatch(csvFeature, feature, model, feature);
+                            if (similarity > bestSimilarity && similarity > 0.5) {
+                                bestMatch = csvFeature;
+                                bestSimilarity = similarity;
+                            }
+                        });
+                        
+                        if (bestMatch) {
+                            columnIndex = featureToColumnMap[bestMatch];
+                            matchedFeature = bestMatch;
+                            console.log('Found YUKON fuzzy match for "' + feature + '": "' + bestMatch + '" (similarity: ' + bestSimilarity + ')');
+                        }
+                    }
+                    
+                    if (columnIndex !== undefined) {
+                        var value = '';
+                        var featureCategory = featureToCategoryMap[matchedFeature];
+                        
+                        // Try to get value from category-specific storage first
+                        if (featureCategory && trimLevelRowsByCategory[featureCategory] && trimLevelRowsByCategory[featureCategory][trimLevel]) {
+                            value = trimLevelRowsByCategory[featureCategory][trimLevel][columnIndex];
+                        } else {
+                            // Fall back to global storage
+                            value = trimLevelRows[trimLevel][columnIndex];
+                        }
+                        
+                        var hasFeature = value && (value.trim().toUpperCase() === 'YES' || value.trim().toUpperCase() === 'Y');
+                        featureResults.push({
+                            feature: feature,
+                            matchedFeature: matchedFeature,
+                            value: value,
+                            hasFeature: hasFeature,
+                            column: columnIndex,
+                            category: featureCategory
+                        });
+                        
+                        if (!hasFeature) {
+                            hasAllFeatures = false;
+                        }
+                    } else {
+                        console.warn('YUKON Feature "' + feature + '" not found in CSV columns');
+                        hasAllFeatures = false;
+                    }
+                });
+                
+                if (hasAllFeatures) {
+                    matchingTrimLevels.push(trimLevel);
+                }
+                
+                console.log('YUKON Trim level ' + trimLevel + ' has all features: ' + hasAllFeatures);
+                console.log('YUKON Feature results for ' + trimLevel + ':', featureResults);
+            }
+        });
+        
+        console.log('YUKON Matching trim levels:', matchingTrimLevels);
+        
+        // Update the HTML block with matching trim levels
+        var htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        if (htmlBlock.length) {
+            if (matchingTrimLevels.length > 0) {
+                var trimLevelText = matchingTrimLevels.join(', ');
+                var html = '<p>Wonderful, it sounds like the <strong>' + trimLevelText + '</strong> would be the best fit, which has all of these features and it is available! One moment while I plug this car in.</p>';
+                html += '<button id="viewYukonTrimLevelsButton" style="margin-top: 10px; padding: 8px 16px; background-color: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer;">View Trim Levels</button>';
+                htmlBlock.html(html);
+                
+                // Bind click event for trim levels button
+                $('#viewYukonTrimLevelsButton').off('click').on('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Prevent multiple rapid clicks
+                    var button = $(this);
+                    if (button.data('loading')) {
+                        console.log('YUKON View Trim Levels button already loading, ignoring click');
+                        return;
+                    }
+                    
+                    button.data('loading', true);
+                    button.prop('disabled', true);
+                    var originalText = button.text();
+                    button.text('Loading...');
+                    
+                    console.log('YUKON View Trim Levels button clicked');
+                    console.log('YUKON Trim levels data:', {
+                        model: model,
+                        matchingTrimLevels: matchingTrimLevels,
+                        modelFilter: model
+                    });
+                    
+                    try {
+                        showTrimLevelsPopup(model, matchingTrimLevels, model);
+                    } catch (error) {
+                        console.error('Error showing YUKON trim levels popup:', error);
+                        alert('Error: Unable to open trim levels popup. Please try again.');
+                    }
+                    
+                    // Reset button state after a delay
+                    setTimeout(function() {
+                        button.data('loading', false);
+                        button.prop('disabled', false);
+                        button.text(originalText);
+                    }, 2000);
+                });
+            } else {
+                htmlBlock.html('<p>No matching trim levels found. Please adjust your feature selections.</p>');
+            }
+        } else {
+            console.error('❌ HTML block not found for field ID:', htmlBlockFieldId);
+        }
+        
+        // Store the results
+        trimLevelsData[model] = matchingTrimLevels;
+    }
+
 	function updateTrimLevels(model) {
     var config = modelConfigs[model];
     if (!config) {
@@ -2315,6 +2894,29 @@ function populateTerrainFeaturesAfterDescriptions() {
             acadiaHtmlBlockFieldId: acadiaHtmlBlockFieldId,
             selector1: '#field_' + formId + '_' + acadiaHtmlBlockFieldId,
             selector2: '#field_' + formId + '_138',
+            found: checkboxField.length,
+            actualId: checkboxField.attr('id'),
+            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
+        });
+        
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    } else if (model === 'YUKON') {
+        // For YUKON, checkboxes are in field 139 (HTML block)
+        checkboxField = $('#field_' + formId + '_' + yukonHtmlBlockFieldId);
+        if (!checkboxField.length) {
+            checkboxField = $('#field_' + formId + '_139');
+        }
+        if (!checkboxField.length) {
+            checkboxField = $('[id*="139"]').filter(function() {
+                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+            });
+        }
+        
+        console.log('YUKON checkboxField debug:', {
+            yukonHtmlBlockFieldId: yukonHtmlBlockFieldId,
+            selector1: '#field_' + formId + '_' + yukonHtmlBlockFieldId,
+            selector2: '#field_' + formId + '_139',
             found: checkboxField.length,
             actualId: checkboxField.attr('id'),
             hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
@@ -2399,6 +3001,35 @@ function populateTerrainFeaturesAfterDescriptions() {
             if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
                 $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
                 console.log('Prepended info icon before ACADIA feature: ' + feature + ', matched: ' + matchedFeature);
+            }
+        });
+    } else if (model === 'YUKON') {
+        // For YUKON, handle the different structure
+        checkboxField.find('.gchoice').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label');
+            var feature = $input.attr('value') || '';
+            
+            if (!feature || !$input.length) {
+                console.warn('Invalid YUKON checkbox structure in field (ID: ' + yukonHtmlBlockFieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class')
+                });
+                return;
+            }
+            
+            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
+                return fuzzyMatch(key, feature, model, feature);
+            });
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + String(matchedFeature) + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + String(matchedFeature) + '">i</span>');
+                console.log('Prepended info icon before YUKON feature: ' + feature + ', matched: ' + matchedFeature);
             }
         });
     } else {
@@ -2505,6 +3136,39 @@ function populateTerrainFeaturesAfterDescriptions() {
             // If still no match, provide fallback
             if (!description) {
                 description = 'No GMC Acadia description available for ' + featureString;
+                console.log('No match found, using fallback description');
+            }
+            
+            console.log('Found description:', description);
+        } else if (model === 'YUKON') {
+            console.log('YUKON model detected, using GMC descriptions');
+            console.log('Feature to lookup:', feature);
+            
+            // Convert feature to string to avoid toUpperCase errors
+            var featureString = String(feature || '');
+            console.log('Feature as string:', featureString);
+            console.log('Feature uppercase:', featureString.toUpperCase());
+            console.log('Available yukon descriptions:', Object.keys(yukonFeatureDescriptions));
+            
+            // Try exact match first
+            description = yukonFeatureDescriptions[featureString.toUpperCase()];
+            
+            // If no exact match, try partial matching
+            if (!description) {
+                console.log('No exact match found, trying partial matching...');
+                var matchedKey = Object.keys(yukonFeatureDescriptions).find(function(key) {
+                    // Check if the key contains the feature or vice versa
+                    return key.includes(featureString.toUpperCase()) || featureString.toUpperCase().includes(key);
+                });
+                if (matchedKey) {
+                    description = yukonFeatureDescriptions[matchedKey];
+                    console.log('Found partial match:', matchedKey);
+                }
+            }
+            
+            // If still no match, provide fallback
+            if (!description) {
+                description = 'No GMC Yukon description available for ' + featureString;
                 console.log('No match found, using fallback description');
             }
             
@@ -3314,10 +3978,18 @@ function initFormBindings() {
                                     populateAcadiaFeatures();
                                     console.log('acadiaPopulated after call:', acadiaPopulated);
                                     updateTrimLevels('ACADIA');
+                                } else if (input.val() === 'YUKON' && input.is(':checked')) {
+                                    console.log('🚗 YUKON selected via radio button - calling populateYukonFeatures');
+                                    console.log('Current time:', new Date().toISOString());
+                                    console.log('yukonPopulated before call:', yukonPopulated);
+                                    populateYukonFeatures();
+                                    console.log('yukonPopulated after call:', yukonPopulated);
+                                    updateTrimLevels('YUKON');
                                 } else if (input.is(':checked')) {
-                                    console.log('Non-TERRAIN/ACADIA GMC model selected: ' + input.val());
+                                    console.log('Non-TERRAIN/ACADIA/YUKON GMC model selected: ' + input.val());
                                     terrainPopulated = false;
                                     acadiaPopulated = false;
+                                    yukonPopulated = false;
                                 }
                             }
                         }
@@ -3374,10 +4046,18 @@ function initFormBindings() {
                              populateAcadiaFeatures();
                              console.log('acadiaPopulated after call:', acadiaPopulated);
                              updateTrimLevels('ACADIA');
+                         } else if ($(this).val() === 'YUKON' && $(this).is(':checked')) {
+                             console.log('🚗 YUKON selected via delegated radio button - calling populateYukonFeatures');
+                             console.log('Current time:', new Date().toISOString());
+                             console.log('yukonPopulated before call:', yukonPopulated);
+                             populateYukonFeatures();
+                             console.log('yukonPopulated after call:', yukonPopulated);
+                             updateTrimLevels('YUKON');
                          } else if ($(this).is(':checked')) {
-                             console.log('Non-TERRAIN/ACADIA GMC model selected via delegated: ' + $(this).val());
+                             console.log('Non-TERRAIN/ACADIA/YUKON GMC model selected via delegated: ' + $(this).val());
                              terrainPopulated = false;
                              acadiaPopulated = false;
+                             yukonPopulated = false;
                          }
                      }
                 }
@@ -3529,10 +4209,15 @@ function initFormBindings() {
                 console.log('ACADIA radio button detected, calling populateAcadiaFeatures');
                 populateAcadiaFeatures();
                 updateTrimLevels('ACADIA');
+            } else if ($(this).val() === 'YUKON' && $(this).is(':checked')) {
+                console.log('YUKON radio button detected, calling populateYukonFeatures');
+                populateYukonFeatures();
+                updateTrimLevels('YUKON');
             } else if ($(this).is(':checked')) {
-                console.log('Non-TERRAIN/ACADIA GMC model selected, resetting');
+                console.log('Non-TERRAIN/ACADIA/YUKON GMC model selected, resetting');
                 terrainPopulated = false;
                 acadiaPopulated = false;
+                yukonPopulated = false;
             }
         });
 
@@ -3565,7 +4250,17 @@ function initFormBindings() {
                             } else {
                                 console.log('ACADIA radio button not checked or not found');
                             }
-                        } else if (model !== 'TERRAIN' && model !== 'ACADIA') {
+                        } else if (model === 'YUKON') {
+                            // Check if YUKON radio button is selected
+                            var yukonRadio = $('#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"][value="YUKON"]');
+                            if (yukonRadio.length && yukonRadio.is(':checked')) {
+                                console.log('YUKON radio button is checked, populating features');
+                                populateYukonFeatures();
+                                updateTrimLevels(model);
+                            } else {
+                                console.log('YUKON radio button not checked or not found');
+                            }
+                        } else if (model !== 'TERRAIN' && model !== 'ACADIA' && model !== 'YUKON') {
                             updateTrimLevels(model);
                         }
                     });
@@ -5716,6 +6411,7 @@ function showVehicleInfo(isKiaField) {
     loadFeatureDescriptions();
     loadTerrainFeatureDescriptions();
     loadAcadiaFeatureDescriptions();
+    loadYukonFeatureDescriptions();
 initFormBindings();
 updateSelectedName();
 
