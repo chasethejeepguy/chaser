@@ -543,6 +543,11 @@ jQuery(document).ready(function($) {
             .feature-groups {\
                 grid-template-columns: repeat(2, 1fr);\
             }\
+        }\
+        /* Terrain checkbox spacing */\
+        .gchoice[class*="gchoice_terrain_"] {\
+            margin-bottom: 4% !important;\
+            padding-bottom: 4px;\
         }';
     $('head').append('<style id="popupStyles">' + cssStyles + '</style>');
     console.log('Inline vehicle popup, Field 57, Generate Note, feature popup, trim levels popup, and Push to DriveCentric buttons CSS appended');
