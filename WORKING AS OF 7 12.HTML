@@ -3461,29 +3461,29 @@ function populateCanyonFeatures() {
 					if (matchingTrimLevels.length > 0) {
 						detailsHtml += '<h3>Feature Matching Details:</h3>';
 						matchingTrimLevels.forEach(function(trimLevel) {
-							if (trimLevelRows[trimLevel]) {
-								detailsHtml += '<h4>' + trimLevel + '</h4><ul>';
-								selectedFeatures.forEach(function(feature) {
-									var columnIndex = featureToColumnMap[feature];
-									var matchedFeature = feature;
-									
-									// Try fuzzy matching if exact match not found
-									if (columnIndex === undefined) {
-										Object.keys(featureToColumnMap).forEach(function(csvFeature) {
-											if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
-												columnIndex = featureToColumnMap[csvFeature];
-												matchedFeature = csvFeature;
-											}
-										});
-									}
-									
-									if (columnIndex !== undefined) {
-										var value = trimLevelRows[trimLevel][columnIndex];
-										detailsHtml += '<li>' + feature + (matchedFeature !== feature ? ' (matched: ' + matchedFeature + ')' : '') + ': ' + value + '</li>';
-									}
-								});
-								detailsHtml += '</ul>';
-							}
+							detailsHtml += '<h4>' + trimLevel + '</h4><ul>';
+							selectedFeatures.forEach(function(feature) {
+								var columnIndex = featureToColumnMap[feature];
+								var category = featureToCategoryMap[feature];
+								var matchedFeature = feature;
+								
+								// Try fuzzy matching if exact match not found
+								if (columnIndex === undefined) {
+									Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+										if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+											columnIndex = featureToColumnMap[csvFeature];
+											matchedFeature = csvFeature;
+											category = featureToCategoryMap[csvFeature];
+										}
+									});
+								}
+								
+								if (columnIndex !== undefined && category && trimLevelRowsByCategory[category] && trimLevelRowsByCategory[category][trimLevel]) {
+									var value = trimLevelRowsByCategory[category][trimLevel][columnIndex];
+									detailsHtml += '<li>' + feature + (matchedFeature !== feature ? ' (matched: ' + matchedFeature + ')' : '') + ': ' + value + '</li>';
+								}
+							});
+							detailsHtml += '</ul>';
 						});
 					}
 					
