@@ -649,6 +649,95 @@ jQuery(document).ready(function($) {
     var terrainPopulated = false;
     var acadiaPopulated = false;
     var yukonPopulated = false;
+    
+    // Function to find best description match with fuzzy matching for typos
+    function findBestDescriptionMatch(searchFeature, descriptionMap) {
+        console.log('🔍 Fuzzy matching for:', searchFeature);
+        console.log('Available keys:', Object.keys(descriptionMap));
+        
+        // Handle specific known typos first
+        var typoMap = {
+            'COMPATABILITY': 'COMPATIBILITY',
+            'INFOTAINTMENT': 'INFOTAINMENT'
+        };
+        
+        // Check if we need to fix a common typo
+        var correctedFeature = searchFeature;
+        for (var typo in typoMap) {
+            if (searchFeature.indexOf(typo) !== -1) {
+                correctedFeature = searchFeature.replace(typo, typoMap[typo]);
+                console.log('🔧 Corrected typo:', searchFeature, '->', correctedFeature);
+                if (descriptionMap[correctedFeature]) {
+                    console.log('✅ Direct match found after typo correction');
+                    return descriptionMap[correctedFeature];
+                }
+            }
+        }
+        
+        var bestMatch = null;
+        var highestSimilarity = 0;
+        var threshold = 0.7; // Lower threshold for better matching
+        
+        for (var key in descriptionMap) {
+            var similarity = calculateSimilarity(correctedFeature, key);
+            console.log('Similarity between "' + correctedFeature + '" and "' + key + '": ' + similarity);
+            
+            if (similarity > highestSimilarity && similarity >= threshold) {
+                highestSimilarity = similarity;
+                bestMatch = descriptionMap[key];
+                console.log('✅ New best match found: "' + key + '" with similarity ' + similarity);
+            }
+        }
+        
+        if (bestMatch) {
+            console.log('🎯 Best match found with similarity:', highestSimilarity);
+        } else {
+            console.log('❌ No fuzzy match found above threshold', threshold);
+        }
+        
+        return bestMatch;
+    }
+    
+    // Function to calculate similarity between two strings
+    function calculateSimilarity(str1, str2) {
+        // Simple Levenshtein distance based similarity
+        var longer = str1.length > str2.length ? str1 : str2;
+        var shorter = str1.length > str2.length ? str2 : str1;
+        
+        if (longer.length === 0) return 1.0;
+        
+        var distance = levenshteinDistance(longer, shorter);
+        return (longer.length - distance) / longer.length;
+    }
+    
+    // Function to calculate Levenshtein distance between two strings
+    function levenshteinDistance(str1, str2) {
+        var matrix = [];
+        
+        for (var i = 0; i <= str2.length; i++) {
+            matrix[i] = [i];
+        }
+        
+        for (var j = 0; j <= str1.length; j++) {
+            matrix[0][j] = j;
+        }
+        
+        for (i = 1; i <= str2.length; i++) {
+            for (j = 1; j <= str1.length; j++) {
+                if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1, // substitution
+                        matrix[i][j - 1] + 1,     // insertion
+                        matrix[i - 1][j] + 1      // deletion
+                    );
+                }
+            }
+        }
+        
+        return matrix[str2.length][str1.length];
+    }
 
     // Model to field ID, CSV URL, and model filter mappings
     var modelConfigs = {
@@ -1375,9 +1464,19 @@ jQuery(document).ready(function($) {
                         return;
                     }
                     
-                    console.log('Looking for feature (uppercase):', feature.toUpperCase());
-                    // Use GMC Terrain descriptions instead of KIA descriptions (case-insensitive)
-                    var description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No GMC Terrain description available for ' + feature;
+                                console.log('Looking for feature (uppercase):', feature.toUpperCase());
+            // Use GMC Terrain descriptions with fuzzy matching for typos
+            var description = terrainFeatureDescriptions[feature.toUpperCase()];
+            if (!description) {
+                // Try fuzzy matching for typos
+                var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), terrainFeatureDescriptions);
+                if (bestMatch) {
+                    description = bestMatch;
+                    console.log('✅ Found terrain description via fuzzy matching for:', feature);
+                } else {
+                    description = 'No GMC Terrain description available for ' + feature;
+                }
+            }
                     console.log('Found description:', description);
                     console.log('=== END TERRAIN FEATURE INFO DEBUG ===');
                     showFeatureDescription(feature, description);
@@ -1667,8 +1766,18 @@ function populateAcadiaFeatures() {
                     }
                     
                     console.log('Looking for feature (uppercase):', feature.toUpperCase());
-                    // Use GMC Acadia descriptions instead of KIA descriptions (case-insensitive)
-                    var description = acadiaFeatureDescriptions[feature.toUpperCase()] || 'No GMC Acadia description available for ' + feature;
+                    // Use GMC Acadia descriptions with fuzzy matching for typos
+                    var description = acadiaFeatureDescriptions[feature.toUpperCase()];
+                    if (!description) {
+                        // Try fuzzy matching for typos
+                        var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), acadiaFeatureDescriptions);
+                        if (bestMatch) {
+                            description = bestMatch;
+                            console.log('✅ Found acadia description via fuzzy matching for:', feature);
+                        } else {
+                            description = 'No GMC Acadia description available for ' + feature;
+                        }
+                    }
                     console.log('Found description:', description);
                     console.log('=== END ACADIA FEATURE INFO DEBUG ===');
                     showFeatureDescription(feature, description);
@@ -1940,8 +2049,18 @@ function populateYukonFeatures() {
                     }
                     
                     console.log('Looking for feature (uppercase):', feature.toUpperCase());
-                    // Use GMC Yukon descriptions instead of KIA descriptions (case-insensitive)
-                    var description = yukonFeatureDescriptions[feature.toUpperCase()] || 'No GMC Yukon description available for ' + feature;
+                    // Use GMC Yukon descriptions with fuzzy matching for typos
+                    var description = yukonFeatureDescriptions[feature.toUpperCase()];
+                    if (!description) {
+                        // Try fuzzy matching for typos
+                        var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), yukonFeatureDescriptions);
+                        if (bestMatch) {
+                            description = bestMatch;
+                            console.log('✅ Found yukon description via fuzzy matching for:', feature);
+                        } else {
+                            description = 'No GMC Yukon description available for ' + feature;
+                        }
+                    }
                     console.log('Found description:', description);
                     console.log('=== END YUKON FEATURE INFO DEBUG ===');
                     showFeatureDescription(feature, description);
@@ -2980,21 +3099,33 @@ function populateYukonFeatures() {
             console.log('Feature to lookup:', feature);
             console.log('Feature uppercase:', feature.toUpperCase());
             console.log('Available terrain descriptions:', Object.keys(terrainFeatureDescriptions));
-            description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No description available for ' + feature;
+            description = terrainFeatureDescriptions[feature.toUpperCase()];
+            if (!description) {
+                var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), terrainFeatureDescriptions);
+                description = bestMatch || 'No description available for ' + feature;
+            }
             console.log('Found description:', description);
         } else if (model === 'ACADIA') {
             console.log('ACADIA model detected, using GMC descriptions');
             console.log('Feature to lookup:', feature);
             console.log('Feature uppercase:', feature.toUpperCase());
             console.log('Available acadia descriptions:', Object.keys(acadiaFeatureDescriptions));
-            description = acadiaFeatureDescriptions[feature.toUpperCase()] || 'No description available for ' + feature;
+            description = acadiaFeatureDescriptions[feature.toUpperCase()];
+            if (!description) {
+                var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), acadiaFeatureDescriptions);
+                description = bestMatch || 'No description available for ' + feature;
+            }
             console.log('Found description:', description);
         } else if (model === 'YUKON') {
             console.log('YUKON model detected, using GMC descriptions');
             console.log('Feature to lookup:', feature);
             console.log('Feature uppercase:', feature.toUpperCase());
             console.log('Available yukon descriptions:', Object.keys(yukonFeatureDescriptions));
-            description = yukonFeatureDescriptions[feature.toUpperCase()] || 'No description available for ' + feature;
+            description = yukonFeatureDescriptions[feature.toUpperCase()];
+            if (!description) {
+                var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), yukonFeatureDescriptions);
+                description = bestMatch || 'No description available for ' + feature;
+            }
             console.log('Found description:', description);
         } else {
             description = featureDescriptions[feature] || 'No description available for ' + feature;
