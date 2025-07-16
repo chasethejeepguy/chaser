@@ -636,6 +636,8 @@ jQuery(document).ready(function($) {
     var acadiaHtmlBlockFieldId = 138;
     var yukonCheckboxFieldId = 139;
     var yukonHtmlBlockFieldId = 139;
+    var canyonCheckboxFieldId = 140;
+    var canyonHtmlBlockFieldId = 140;
 
     // Global variables
     var vehicleData = null;
@@ -649,6 +651,7 @@ jQuery(document).ready(function($) {
     var terrainPopulated = false;
     var acadiaPopulated = false;
     var yukonPopulated = false;
+    var canyonPopulated = false;
     
     // Function to find best description match with fuzzy matching for typos
     function findBestDescriptionMatch(searchFeature, descriptionMap) {
@@ -758,7 +761,8 @@ jQuery(document).ready(function($) {
         'TELLURIDE': { fieldId: tellurideCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/kiamodels/TELLURIDE.csv', modelFilter: 'Telluride' },
         'TERRAIN': { fieldId: terrainCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/terrain.csv', modelFilter: 'Terrain', isGmc: true },
         'ACADIA': { fieldId: acadiaCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/acadia.csv', modelFilter: 'Acadia', isGmc: true },
-        'YUKON': { fieldId: yukonCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/yukon.csv', modelFilter: 'Yukon', isGmc: true }
+        'YUKON': { fieldId: yukonCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/yukon.csv', modelFilter: 'Yukon', isGmc: true },
+        'CANYON': { fieldId: canyonCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/canyon.csv', modelFilter: 'Canyon', isGmc: true }
     };
 
     // Email mappings
@@ -1069,6 +1073,54 @@ jQuery(document).ready(function($) {
         }).catch(function(error) {
             console.error('Fetch error for GMC Yukon Feature Descriptions:', error.message);
             yukonFeatureDescriptions = {};
+        });
+    }
+
+    // Global variable for Canyon feature descriptions
+    var canyonFeatureDescriptions = {};
+    
+    // Load Canyon feature descriptions
+    function loadCanyonFeatureDescriptions() {
+        var canyonDescriptionsUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmccanyondescriptions.csv';
+        console.log('Loading Canyon feature descriptions from:', canyonDescriptionsUrl);
+        
+        fetch(canyonDescriptionsUrl)
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.text();
+        })
+        .then(function(csvText) {
+            console.log('Raw Canyon descriptions CSV:', csvText);
+            canyonFeatureDescriptions = {};
+            
+            // Parse CSV text line by line
+            var lines = csvText.split('\n');
+            lines.forEach(function(line) {
+                if (line.trim() && line.includes('{') && line.includes('}')) {
+                    // Find the closing brace
+                    var closingBraceIndex = line.indexOf('}');
+                    if (closingBraceIndex !== -1) {
+                        var feature = line.substring(1, closingBraceIndex);
+                        var description = line.substring(closingBraceIndex + 2);
+                        if (feature && description) {
+                            canyonFeatureDescriptions[feature] = description;
+                        }
+                    }
+                }
+            });
+            
+            console.log('Parsed Canyon feature descriptions:', canyonFeatureDescriptions);
+            
+            if (Object.keys(canyonFeatureDescriptions).length === 0) {
+                console.warn('WARNING: No Canyon feature descriptions loaded!');
+            } else {
+                console.log('SUCCESS: GMC Canyon descriptions loaded successfully!');
+            }
+        }).catch(function(error) {
+            console.error('Fetch error for GMC Canyon Feature Descriptions:', error.message);
+            canyonFeatureDescriptions = {};
         });
     }
 
@@ -2075,6 +2127,197 @@ function populateYukonFeatures() {
     });
 }
 
+function populateCanyonFeatures() {
+    console.log('=== populateCanyonFeatures called ===');
+    var canyonPopulated = false;
+    
+    console.log('Current canyonPopulated flag:', canyonPopulated);
+    
+    // Check if already populated
+    if (canyonPopulated) {
+        console.log('Canyon features already populated, skipping');
+        return;
+    }
+    
+    console.log('canyonHtmlBlockFieldId:', canyonHtmlBlockFieldId);
+    
+    // Get the HTML block field for Canyon
+    var htmlBlock = $('#field_' + formId + '_' + canyonHtmlBlockFieldId);
+    console.log('Selector 1 (#field_' + formId + '_' + canyonHtmlBlockFieldId + '):', htmlBlock.length);
+    
+    if (!htmlBlock.length) {
+        htmlBlock = $('#field_' + formId + '_' + canyonHtmlBlockFieldId + '_container');
+        console.log('Selector 2 (#field_' + formId + '_' + canyonHtmlBlockFieldId + '_container):', htmlBlock.length);
+        
+        if (!htmlBlock.length) {
+            htmlBlock = $('[data-fieldid="' + canyonHtmlBlockFieldId + '"]');
+            console.log('Selector 3 ([data-fieldid="' + canyonHtmlBlockFieldId + '"]):', htmlBlock.length);
+        }
+    }
+    
+    if (!htmlBlock.length) {
+        console.error('Could not find Canyon HTML block field');
+        return;
+    }
+    
+    console.log('Successfully found Canyon HTML block field');
+    
+    // Debug selectors
+    console.log('Testing selectors for Canyon HTML block field:');
+    [
+        '#field_' + formId + '_' + canyonHtmlBlockFieldId,
+        '#field_' + formId + '_' + canyonHtmlBlockFieldId + '_container',
+        '[data-fieldid="' + canyonHtmlBlockFieldId + '"]'
+    ].forEach(function(selector, index) {
+        var element = $(selector);
+        console.log('Selector ' + (index + 1) + ' (' + selector + '):', element.length);
+    });
+    
+    // Define the URL for the Canyon CSV file
+    var canyonCsvUrl = 'https://hutchinsonautoteam.com/gmcmodels/canyon.csv';
+    console.log('Fetching Canyon CSV from:', canyonCsvUrl);
+    
+    // Fetch the CSV file
+    fetch(canyonCsvUrl).then(function(response) {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.text();
+    }).then(function(csvText) {
+        console.log('Raw Canyon CSV text:', csvText);
+        
+        // Parse the CSV using Papa Parse
+        Papa.parse(csvText, {
+            complete: function(results) {
+                console.log('Papa Parse results for Canyon:', results);
+                
+                var csvData = results.data;
+                var features = [];
+                var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+                
+                // Process each category
+                categories.forEach(function(category) {
+                    var categoryFound = false;
+                    
+                    csvData.forEach(function(row) {
+                        if (row && row.length > 0 && row[0] && row[0].includes('TRIM LEVELS FOR {' + category + '}')) {
+                            categoryFound = true;
+                            console.log('Found category:', category);
+                            
+                            // Extract features from the row (skip the first column which contains the category)
+                            for (var i = 1; i < row.length; i++) {
+                                var feature = row[i];
+                                if (feature && feature.trim() !== '') {
+                                    features.push({
+                                        name: feature.trim(),
+                                        category: category
+                                    });
+                                }
+                            }
+                        }
+                    });
+                    
+                    if (!categoryFound) {
+                        console.warn('Category not found in CSV:', category);
+                    }
+                });
+                
+                console.log('Processed Canyon features:', features);
+                
+                // Create HTML content for checkboxes
+                var htmlContent = '<div class="feature-groups" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 20px;">';
+                
+                features.forEach(function(feature, index) {
+                    var checkboxId = 'canyon_feature_' + index;
+                    var cleanFeatureName = feature.name.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+                    var displayName = cleanFeatureName || feature.name;
+                    
+                    htmlContent += '<div class="feature-item" style="display: flex; align-items: center; margin-bottom: 10px;">' +
+                                  '<input type="checkbox" id="' + checkboxId + '" name="canyon_features" value="' + feature.name + '" data-category="' + feature.category + '" style="margin-right: 8px;">' +
+                                  '<label for="' + checkboxId + '" style="font-size: 12px; line-height: 1.3; cursor: pointer; flex: 1;">' + displayName + '</label>' +
+                                  '<span class="feature-info-icon" data-feature="' + feature.name + '" style="margin-left: 5px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 14px; user-select: none;" title="Click for feature information">ℹ️</span>' +
+                                  '</div>';
+                });
+                
+                htmlContent += '</div>';
+                
+                // Replace the placeholder with the checkbox HTML
+                var currentHtml = htmlBlock.html();
+                var updatedHtml = currentHtml.replace(/{canyon feature checkboxes}/g, htmlContent);
+                htmlBlock.html(updatedHtml);
+                
+                // Verify the replacement was successful
+                var createdCheckboxes = htmlBlock.find('input[name="canyon_features"]');
+                var categoryCheckboxes = htmlBlock.find('input[data-category]');
+                
+                console.log('✅ Total Canyon checkboxes created:', createdCheckboxes.length);
+                console.log('✅ Checkboxes with data-category:', categoryCheckboxes.length);
+                
+                // Log first few checkboxes for verification
+                createdCheckboxes.slice(0, 3).each(function(i) {
+                    console.log('Checkbox ' + i + ':', {
+                        id: $(this).attr('id'),
+                        name: $(this).attr('name'),
+                        value: $(this).attr('value'),
+                        category: $(this).attr('data-category')
+                    });
+                });
+
+                canyonPopulated = true;
+                console.log('Canyon features populated into 5 columns in field 140');
+
+                // Bind change events and add info icons
+                htmlBlock.find('input[type="checkbox"]').off('change.CANYONFeatures').on('change.CANYONFeatures', function() {
+                    console.log('CANYON checkbox changed, updating trim levels');
+                    updateTrimLevels('CANYON');
+                });
+
+                htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var feature = $(this).data('feature');
+                    console.log('=== CANYON FEATURE INFO ICON CLICKED ===');
+                    console.log('Feature clicked:', feature);
+                    console.log('Feature type:', typeof feature);
+                    console.log('Feature length:', feature ? feature.length : 'undefined');
+                    console.log('Available canyon descriptions:', Object.keys(canyonFeatureDescriptions));
+                    console.log('Total descriptions available:', Object.keys(canyonFeatureDescriptions).length);
+                    console.log('All descriptions:', canyonFeatureDescriptions);
+                    
+                    // Handle case where feature might be undefined or not a string
+                    if (!feature || typeof feature !== 'string') {
+                        console.error('Invalid feature:', feature);
+                        showFeatureDescription('Unknown Feature', 'Feature information not available');
+                        return;
+                    }
+                    
+                    console.log('Looking for feature (uppercase):', feature.toUpperCase());
+                    // Use GMC Canyon descriptions with fuzzy matching for typos
+                    var description = canyonFeatureDescriptions[feature.toUpperCase()];
+                    if (!description) {
+                        // Try fuzzy matching for typos
+                        var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), canyonFeatureDescriptions);
+                        if (bestMatch) {
+                            description = bestMatch;
+                            console.log('✅ Found canyon description via fuzzy matching for:', feature);
+                        } else {
+                            description = 'No GMC Canyon description available for ' + feature;
+                        }
+                    }
+                    console.log('Found description:', description);
+                    console.log('=== END CANYON FEATURE INFO DEBUG ===');
+                    showFeatureDescription(feature, description);
+                });
+            },
+            error: function(error) {
+                console.error('Papa Parse error for Canyon population: ' + error);
+            }
+        });
+    }).catch(function(error) {
+        console.error('Fetch error for Canyon population: ' + error.message);
+    });
+}
+
 	function processTerrainTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
 		console.log('Processing TERRAIN trim levels for selected features:', selectedFeatures);
 		
@@ -2867,6 +3110,221 @@ function populateYukonFeatures() {
 		trimLevelsData[model] = matchingTrimLevels;
 	}
 
+	function processCanyonTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
+		console.log('Processing CANYON trim levels for selected features:', selectedFeatures);
+		
+		var trimLevels = ['AT4', 'DENALI', 'ELEVATION'];
+		var matchingTrimLevels = [];
+		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+		var featureToColumnMap = {};
+		var featureToCategoryMap = {};
+		var trimLevelRows = {};
+		var trimLevelRowsByCategory = {};
+		var currentCategory = null;
+		
+		// Parse the CSV data to map features to columns and find trim level rows
+		csvData.forEach(function(row, rowIndex) {
+			if (row && row.length > 0) {
+				var firstCell = row[0];
+				
+				// Check if this is a category header
+				if (firstCell && firstCell.includes('TRIM LEVELS FOR {')) {
+					currentCategory = categories.find(function(cat) {
+						return firstCell.includes(cat);
+					});
+					
+					if (currentCategory) {
+						console.log('Found category:', currentCategory);
+						
+						// Map features to their column indices for this category
+						for (var i = 1; i < row.length; i++) {
+							var feature = row[i];
+							if (feature && feature.trim() !== '') {
+								var featureKey = feature.trim();
+								featureToColumnMap[featureKey] = i;
+								featureToCategoryMap[featureKey] = currentCategory;
+								console.log('Mapped feature:', featureKey, 'to column:', i, 'category:', currentCategory);
+							}
+						}
+						
+						// Initialize trim level rows for this category
+						trimLevelRowsByCategory[currentCategory] = {};
+					}
+				}
+				// Check if this is a trim level row
+				else if (firstCell && trimLevels.includes(firstCell)) {
+					var trimLevel = firstCell;
+					trimLevelRows[trimLevel] = row;
+					
+					if (currentCategory) {
+						trimLevelRowsByCategory[currentCategory][trimLevel] = row;
+					}
+					
+					console.log('Found trim level row:', trimLevel, 'in category:', currentCategory);
+				}
+			}
+		});
+		
+		console.log('Feature to column mapping:', featureToColumnMap);
+		console.log('Trim level rows:', trimLevelRows);
+		
+		// For each trim level, check if it matches ALL selected features
+		trimLevels.forEach(function(trimLevel) {
+			var trimLevelRow = trimLevelRows[trimLevel];
+			if (!trimLevelRow) {
+				console.log('No row found for trim level:', trimLevel);
+				return;
+			}
+			
+			var matchesAll = true;
+			var matchedFeatures = [];
+			
+			selectedFeatures.forEach(function(feature) {
+				var columnIndex = featureToColumnMap[feature];
+				
+				// Clean up the feature name the same way as in populateCanyonFeatures
+				var cleanFeatureName = feature.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+				
+				// If exact match not found, try fuzzy matching
+				if (columnIndex === undefined) {
+					console.log('Exact match not found for feature:', feature, 'trying fuzzy matching...');
+					
+					// Try with cleaned feature name
+					if (cleanFeatureName && cleanFeatureName !== feature) {
+						columnIndex = featureToColumnMap[cleanFeatureName];
+						console.log('Cleaned feature name match:', cleanFeatureName, 'column:', columnIndex);
+					}
+					
+					// If still not found, try fuzzy matching
+					if (columnIndex === undefined) {
+						var bestMatch = null;
+						var bestScore = 0;
+						var threshold = 0.3; // Lower threshold for partial matches
+						
+						// Try to find partial matches
+						Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+							var score = 0;
+							
+							// Check if the selected feature is contained in the CSV feature
+							if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+								score = 0.8; // High score for containment
+							}
+							// Check if CSV feature starts with the selected feature
+							else if (csvFeature.toLowerCase().startsWith(feature.toLowerCase())) {
+								score = 0.7;
+							}
+							// Check if selected feature is a significant part of CSV feature
+							else if (feature.length >= 3 && csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+								score = 0.6;
+							}
+							// Fuzzy string matching as fallback
+							else {
+								var similarity = calculateSimilarity(feature.toLowerCase(), csvFeature.toLowerCase());
+								if (similarity > threshold) {
+									score = similarity;
+								}
+							}
+							
+							if (score > bestScore) {
+								bestScore = score;
+								bestMatch = csvFeature;
+							}
+						});
+						
+						if (bestMatch) {
+							columnIndex = featureToColumnMap[bestMatch];
+							console.log('Fuzzy match found for:', feature, '-> matched:', bestMatch, 'column:', columnIndex, 'score:', bestScore);
+						}
+					}
+				}
+				
+				if (columnIndex !== undefined) {
+					var value = trimLevelRow[columnIndex];
+					console.log('Checking feature:', feature, 'column:', columnIndex, 'value:', value, 'for trim level:', trimLevel);
+					
+					if (value && value.toUpperCase() === 'YES') {
+						matchedFeatures.push(feature);
+					} else {
+						matchesAll = false;
+						console.log('Feature', feature, 'not available for trim level:', trimLevel, '(value:', value, ')');
+					}
+				} else {
+					matchesAll = false;
+					console.log('Feature', feature, 'not found in CSV for trim level:', trimLevel);
+				}
+			});
+			
+			if (matchesAll) {
+				matchingTrimLevels.push(trimLevel);
+				console.log('✅ Trim level', trimLevel, 'matches all selected features');
+			} else {
+				console.log('❌ Trim level', trimLevel, 'does not match all selected features');
+			}
+		});
+		
+		console.log('Matching trim levels for Canyon:', matchingTrimLevels);
+		
+		// Display results
+		if (trimLevelsButtonBlock && trimLevelsButtonBlock.length) {
+			var buttonText = matchingTrimLevels.length > 0 ? 
+				'View Available Trim Levels (' + matchingTrimLevels.length + ')' : 
+				'No Matching Trim Levels';
+			
+			trimLevelsButtonBlock.html('<button type="button" id="viewTrimLevelsButton" class="button">' + buttonText + '</button>');
+			
+			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
+				e.preventDefault();
+				if (matchingTrimLevels.length > 0) {
+					var detailsHtml = '<h2>Available Trim Levels for ' + model + '</h2>';
+					detailsHtml += '<p>Based on your selected features, the following trim levels are available:</p>';
+					detailsHtml += '<ul>';
+					matchingTrimLevels.forEach(function(trimLevel) {
+						detailsHtml += '<li><strong>' + trimLevel + '</strong></li>';
+					});
+					detailsHtml += '</ul>';
+					detailsHtml += '<p>Selected features: ' + selectedFeatures.join(', ') + '</p>';
+					
+					// Show matched features for debugging
+					if (matchingTrimLevels.length > 0) {
+						detailsHtml += '<h3>Feature Matching Details:</h3>';
+						matchingTrimLevels.forEach(function(trimLevel) {
+							if (trimLevelRows[trimLevel]) {
+								detailsHtml += '<h4>' + trimLevel + '</h4><ul>';
+								selectedFeatures.forEach(function(feature) {
+									var columnIndex = featureToColumnMap[feature];
+									var matchedFeature = feature;
+									
+									// Try fuzzy matching if exact match not found
+									if (columnIndex === undefined) {
+										Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+											if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+												columnIndex = featureToColumnMap[csvFeature];
+												matchedFeature = csvFeature;
+											}
+										});
+									}
+									
+									if (columnIndex !== undefined) {
+										var value = trimLevelRows[trimLevel][columnIndex];
+										detailsHtml += '<li>' + feature + (matchedFeature !== feature ? ' (matched: ' + matchedFeature + ')' : '') + ': ' + value + '</li>';
+									}
+								});
+								detailsHtml += '</ul>';
+							}
+						});
+					}
+					
+					showFeatureDescription('Available Trim Levels', detailsHtml);
+				} else {
+					alert('No trim levels match your selected features. Please adjust your selections.');
+				}
+			});
+		}
+		
+		// Store the results
+		trimLevelsData[model] = matchingTrimLevels;
+	}
+
 	function updateTrimLevels(model) {
     var config = modelConfigs[model];
     if (!config) {
@@ -2944,6 +3402,29 @@ function populateYukonFeatures() {
         
         htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
         trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    } else if (model === 'CANYON') {
+        // For CANYON, checkboxes are in field 140 (HTML block)
+        checkboxField = $('#field_' + formId + '_' + canyonHtmlBlockFieldId);
+        if (!checkboxField.length) {
+            checkboxField = $('#field_' + formId + '_140');
+        }
+        if (!checkboxField.length) {
+            checkboxField = $('[id*="140"]').filter(function() {
+                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+            });
+        }
+        
+        console.log('CANYON checkboxField debug:', {
+            canyonHtmlBlockFieldId: canyonHtmlBlockFieldId,
+            selector1: '#field_' + formId + '_' + canyonHtmlBlockFieldId,
+            selector2: '#field_' + formId + '_140',
+            found: checkboxField.length,
+            actualId: checkboxField.attr('id'),
+            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
+        });
+        
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
     } else {
         // For other models, checkboxes are in their respective fields
         checkboxField = $('#field_' + formId + '_' + config.fieldId);
@@ -2955,7 +3436,7 @@ function populateYukonFeatures() {
     var defaultButtonText = '<button id="viewTrimLevelsButton">View Trim Levels</button>';
     var noMatchText = 'No matching trim levels found. Please adjust your feature selections or contact support.';
 
-    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : model === 'ACADIA' ? acadiaHtmlBlockFieldId : model === 'YUKON' ? yukonHtmlBlockFieldId : config.fieldId) + '):', {
+    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : model === 'ACADIA' ? acadiaHtmlBlockFieldId : model === 'YUKON' ? yukonHtmlBlockFieldId : model === 'CANYON' ? canyonHtmlBlockFieldId : config.fieldId) + '):', {
         fieldExists: checkboxField.length > 0,
         fieldVisible: checkboxField.is(':visible'),
         fieldClasses: checkboxField.attr('class'),
@@ -3052,6 +3533,30 @@ function populateYukonFeatures() {
                 console.log('Prepended info icon before YUKON feature: ' + feature + ', matched: ' + matchedFeature);
             }
         });
+    } else if (model === 'CANYON') {
+        // For CANYON, handle the different structure
+        checkboxField.find('.feature-item').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label');
+            var feature = $input.attr('value') || '';
+            
+            if (!feature || !$input.length) {
+                console.warn('Invalid CANYON checkbox structure in field (ID: ' + canyonHtmlBlockFieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class')
+                });
+                return;
+            }
+            
+            // Icons are already added in populateCanyonFeatures function
+            console.log('CANYON feature item processed:', feature);
+        });
     } else {
         // For other models, use existing logic
         checkboxField.find('.gfield_checkbox > div, .gfield-choice-wrapper').each(function() {
@@ -3127,6 +3632,17 @@ function populateYukonFeatures() {
                 description = bestMatch || 'No description available for ' + feature;
             }
             console.log('Found description:', description);
+        } else if (model === 'CANYON') {
+            console.log('CANYON model detected, using GMC descriptions');
+            console.log('Feature to lookup:', feature);
+            console.log('Feature uppercase:', feature.toUpperCase());
+            console.log('Available canyon descriptions:', Object.keys(canyonFeatureDescriptions));
+            description = canyonFeatureDescriptions[feature.toUpperCase()];
+            if (!description) {
+                var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), canyonFeatureDescriptions);
+                description = bestMatch || 'No description available for ' + feature;
+            }
+            console.log('Found description:', description);
         } else {
             description = featureDescriptions[feature] || 'No description available for ' + feature;
         }
@@ -3139,7 +3655,7 @@ function populateYukonFeatures() {
         showFeatureDescription(feature, description);
     });
 
-    if (!checkboxField.length || (model !== 'K5' && model !== 'TERRAIN' && model !== 'ACADIA' && model !== 'YUKON' && !checkboxField.is(':visible'))) {
+    if (!checkboxField.length || (model !== 'K5' && model !== 'TERRAIN' && model !== 'ACADIA' && model !== 'YUKON' && model !== 'CANYON' && !checkboxField.is(':visible'))) {
         console.log(model + ' checkbox field not found or not visible, resetting HTML block');
         if (htmlBlock.length) {
             htmlBlock.find('p').text(defaultText);
@@ -3226,6 +3742,18 @@ function populateYukonFeatures() {
                 id: $input.attr('id'),
                 checkboxValue: checkboxValue,
                 mappedFeature: feature,
+                featureLength: feature.length,
+                name: $input.attr('name'),
+                checked: $input.is(':checked'),
+                labelText: $input.next('label').text().substring(0, 100)
+            });
+        } else if (model === 'CANYON') {
+            // For CANYON, get feature from the checkbox value directly
+            feature = $input.attr('value') || '';
+            
+            console.log('CANYON checkbox debug:', {
+                id: $input.attr('id'),
+                checkboxValue: feature,
                 featureLength: feature.length,
                 name: $input.attr('name'),
                 checked: $input.is(':checked'),
@@ -3330,6 +3858,24 @@ function populateYukonFeatures() {
                     console.log(model + ' CSV parsed, rows: ' + results.data.length);
                     console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
                     processYukonTrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
+                }
+            });
+            return;
+        }
+        
+        // Special handling for CANYON model
+        if (model === 'CANYON') {
+            // Log the full CSV content to debug data issues
+            console.log('=== FULL CANYON CSV CONTENT ===');
+            console.log(csvText);
+            console.log('=== END CANYON CSV CONTENT ===');
+            
+            Papa.parse(csvText, {
+                skipEmptyLines: true,
+                complete: function(results) {
+                    console.log(model + ' CSV parsed, rows: ' + results.data.length);
+                    console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
+                    processCanyonTrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
                 }
             });
             return;
@@ -3988,10 +4534,18 @@ function initFormBindings() {
                                     populateYukonFeatures();
                                     console.log('yukonPopulated after call:', yukonPopulated);
                                     updateTrimLevels('YUKON');
+                                } else if (input.val() === 'CANYON' && input.is(':checked')) {
+                                    console.log('🚗 CANYON selected via radio button - calling populateCanyonFeatures');
+                                    console.log('Current time:', new Date().toISOString());
+                                    console.log('canyonPopulated before call:', canyonPopulated);
+                                    populateCanyonFeatures();
+                                    console.log('canyonPopulated after call:', canyonPopulated);
+                                    updateTrimLevels('CANYON');
                                 } else if (input.is(':checked')) {
-                                    console.log('Non-TERRAIN/YUKON GMC model selected: ' + input.val());
+                                    console.log('Non-TERRAIN/YUKON/CANYON GMC model selected: ' + input.val());
                                     terrainPopulated = false;
                                     yukonPopulated = false;
+                                    canyonPopulated = false;
                                 }
                             }
                         }
@@ -4058,11 +4612,19 @@ function initFormBindings() {
                              populateYukonFeatures();
                              console.log('yukonPopulated after call:', yukonPopulated);
                              updateTrimLevels('YUKON');
+                         } else if ($(this).val() === 'CANYON' && $(this).is(':checked')) {
+                             console.log('🚗 CANYON selected via delegated radio button - calling populateCanyonFeatures');
+                             console.log('Current time:', new Date().toISOString());
+                             console.log('canyonPopulated before call:', canyonPopulated);
+                             populateCanyonFeatures();
+                             console.log('canyonPopulated after call:', canyonPopulated);
+                             updateTrimLevels('CANYON');
                          } else if ($(this).is(':checked')) {
-                             console.log('Non-TERRAIN/ACADIA/YUKON GMC model selected via delegated: ' + $(this).val());
+                             console.log('Non-TERRAIN/ACADIA/YUKON/CANYON GMC model selected via delegated: ' + $(this).val());
                              terrainPopulated = false;
                              acadiaPopulated = false;
                              yukonPopulated = false;
+                             canyonPopulated = false;
                          }
                      }
                 }
@@ -4216,10 +4778,15 @@ function initFormBindings() {
                 console.log('YUKON radio button detected, calling populateYukonFeatures');
                 populateYukonFeatures();
                 updateTrimLevels('YUKON');
+            } else if ($(this).val() === 'CANYON' && $(this).is(':checked')) {
+                console.log('CANYON radio button detected, calling populateCanyonFeatures');
+                populateCanyonFeatures();
+                updateTrimLevels('CANYON');
             } else if ($(this).is(':checked')) {
-                console.log('Non-TERRAIN/YUKON GMC model selected, resetting terrain and yukon');
+                console.log('Non-TERRAIN/YUKON/CANYON GMC model selected, resetting terrain, yukon, and canyon');
                 terrainPopulated = false;
                 yukonPopulated = false;
+                canyonPopulated = false;
             }
         });
 
@@ -4252,7 +4819,17 @@ function initFormBindings() {
                             } else {
                                 console.log('YUKON radio button not checked or not found');
                             }
-                        } else if (model !== 'TERRAIN' && model !== 'YUKON') {
+                        } else if (model === 'CANYON') {
+                            // Check if CANYON radio button is selected
+                            var canyonRadio = $('#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"][value="CANYON"]');
+                            if (canyonRadio.length && canyonRadio.is(':checked')) {
+                                console.log('CANYON radio button is checked, populating features');
+                                populateCanyonFeatures();
+                                updateTrimLevels(model);
+                            } else {
+                                console.log('CANYON radio button not checked or not found');
+                            }
+                        } else if (model !== 'TERRAIN' && model !== 'YUKON' && model !== 'CANYON') {
                             updateTrimLevels(model);
                         }
                     });
@@ -4291,7 +4868,17 @@ function initFormBindings() {
                             } else {
                                 console.log('YUKON radio button not checked or not found');
                             }
-                        } else if (model !== 'TERRAIN' && model !== 'YUKON') {
+                        } else if (model === 'CANYON') {
+                            // Check if CANYON radio button is selected
+                            var canyonRadio = $('#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"][value="CANYON"]');
+                            if (canyonRadio.length && canyonRadio.is(':checked')) {
+                                console.log('CANYON radio button is checked, populating features');
+                                populateCanyonFeatures();
+                                updateTrimLevels(model);
+                            } else {
+                                console.log('CANYON radio button not checked or not found');
+                            }
+                        } else if (model !== 'TERRAIN' && model !== 'YUKON' && model !== 'CANYON') {
                             updateTrimLevels(model);
                         }
                     });
@@ -6281,6 +6868,7 @@ function showVehicleInfo(isKiaField) {
     loadTerrainFeatureDescriptions();
     loadAcadiaFeatureDescriptions();
     loadYukonFeatureDescriptions();
+    loadCanyonFeatureDescriptions();
 initFormBindings();
 updateSelectedName();
 
