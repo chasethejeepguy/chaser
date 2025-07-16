@@ -2363,11 +2363,10 @@ function populateCanyonFeatures() {
                         var divStart = '<div class="gchoice gchoice_canyon_' + globalIndex + '" style="margin-bottom: 10px;">';
                         var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
                         var labelTag = '<label for="' + uniqueId + '" id="label_canyon_' + globalIndex + '">' + feature + '</label>';
-                        // Add feature info icon for canyon features
-                        var infoIcon = '<span class="feature-info-icon canyon-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Canyon feature description">ℹ</span>';
+                        // Note: Blue info icons will be added later by the fuzzy matching system to avoid duplicates
                         var divEnd = '</div>';
                         
-                        html += divStart + inputTag + labelTag + infoIcon + divEnd;
+                        html += divStart + inputTag + labelTag + divEnd;
                         globalIndex++;
                     });
                     html += '</div></div>';
