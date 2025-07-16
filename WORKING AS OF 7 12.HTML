@@ -1103,17 +1103,23 @@ jQuery(document).ready(function($) {
             console.log('Canyon descriptions total lines:', lines.length);
             
             lines.forEach(function(line, index) {
-                if (line.trim() && line.includes('{') && line.includes('}')) {
-                    console.log('Processing Canyon description line', index, ':', line);
+                if (line.trim() && line.includes('{') && line.includes('}') && line.includes(':')) {
+                    console.log('Processing Canyon description line', index, ':', line.substring(0, 100) + '...');
                     
                     // Find the closing brace
                     var closingBraceIndex = line.indexOf('}');
                     if (closingBraceIndex !== -1) {
-                        var feature = line.substring(1, closingBraceIndex);
-                        var description = line.substring(closingBraceIndex + 2);
-                        if (feature && description) {
-                            canyonFeatureDescriptions[feature] = description;
-                            console.log('Added Canyon description:', feature, '=', description);
+                        var content = line.substring(1, closingBraceIndex);
+                        var colonIndex = content.indexOf(':');
+                        
+                        if (colonIndex !== -1) {
+                            var feature = content.substring(0, colonIndex).trim();
+                            var description = content.substring(colonIndex + 1).trim();
+                            
+                            if (feature && description) {
+                                canyonFeatureDescriptions[feature.toUpperCase()] = description;
+                                console.log('Added Canyon description:', feature.toUpperCase(), '=', description.substring(0, 100) + '...');
+                            }
                         }
                     }
                 }
@@ -2280,7 +2286,7 @@ function populateCanyonFeatures() {
                         window.canyonFeatureMap[simpleValue] = feature;
                         
                         // Build HTML using simple string concatenation to avoid any quote issues
-                        var divStart = '<div class="gchoice gchoice_canyon_' + globalIndex + '">';
+                        var divStart = '<div class="gchoice gchoice_canyon_' + globalIndex + '" style="margin-bottom: 10px;">';
                         var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
                         var labelTag = '<label for="' + uniqueId + '" id="label_canyon_' + globalIndex + '">' + feature + '</label>';
                         // Add feature info icon for canyon features
@@ -3216,7 +3222,6 @@ function populateCanyonFeatures() {
 		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
 		var featureToColumnMap = {};
 		var featureToCategoryMap = {};
-		var trimLevelRows = {};
 		var trimLevelRowsByCategory = {};
 		var currentCategory = null;
 		
@@ -3252,33 +3257,26 @@ function populateCanyonFeatures() {
 				// Check if this is a trim level row
 				else if (firstCell && trimLevels.includes(firstCell)) {
 					var trimLevel = firstCell;
-					trimLevelRows[trimLevel] = row;
 					
 					if (currentCategory) {
 						trimLevelRowsByCategory[currentCategory][trimLevel] = row;
+						console.log('Found trim level row:', trimLevel, 'in category:', currentCategory);
 					}
-					
-					console.log('Found trim level row:', trimLevel, 'in category:', currentCategory);
 				}
 			}
 		});
 		
 		console.log('Feature to column mapping:', featureToColumnMap);
-		console.log('Trim level rows:', trimLevelRows);
+		console.log('Trim level rows by category:', trimLevelRowsByCategory);
 		
 		// For each trim level, check if it matches ALL selected features
 		trimLevels.forEach(function(trimLevel) {
-			var trimLevelRow = trimLevelRows[trimLevel];
-			if (!trimLevelRow) {
-				console.log('No row found for trim level:', trimLevel);
-				return;
-			}
-			
 			var matchesAll = true;
 			var matchedFeatures = [];
 			
 			selectedFeatures.forEach(function(feature) {
 				var columnIndex = featureToColumnMap[feature];
+				var category = featureToCategoryMap[feature];
 				
 				// Clean up the feature name the same way as in populateCanyonFeatures
 				var cleanFeatureName = feature.replace(/[^a-zA-Z0-9\s]/g, '').trim();
@@ -3290,7 +3288,8 @@ function populateCanyonFeatures() {
 					// Try with cleaned feature name
 					if (cleanFeatureName && cleanFeatureName !== feature) {
 						columnIndex = featureToColumnMap[cleanFeatureName];
-						console.log('Cleaned feature name match:', cleanFeatureName, 'column:', columnIndex);
+						category = featureToCategoryMap[cleanFeatureName];
+						console.log('Cleaned feature name match:', cleanFeatureName, 'column:', columnIndex, 'category:', category);
 					}
 					
 					// If still not found, try fuzzy matching
@@ -3331,14 +3330,16 @@ function populateCanyonFeatures() {
 						
 						if (bestMatch) {
 							columnIndex = featureToColumnMap[bestMatch];
-							console.log('Fuzzy match found for:', feature, '-> matched:', bestMatch, 'column:', columnIndex, 'score:', bestScore);
+							category = featureToCategoryMap[bestMatch];
+							console.log('Fuzzy match found for:', feature, '-> matched:', bestMatch, 'column:', columnIndex, 'category:', category, 'score:', bestScore);
 						}
 					}
 				}
 				
-				if (columnIndex !== undefined) {
+				if (columnIndex !== undefined && category && trimLevelRowsByCategory[category] && trimLevelRowsByCategory[category][trimLevel]) {
+					var trimLevelRow = trimLevelRowsByCategory[category][trimLevel];
 					var value = trimLevelRow[columnIndex];
-					console.log('Checking feature:', feature, 'column:', columnIndex, 'value:', value, 'for trim level:', trimLevel);
+					console.log('Checking feature:', feature, 'column:', columnIndex, 'value:', value, 'for trim level:', trimLevel, 'in category:', category);
 					
 					if (value && value.toUpperCase() === 'YES') {
 						matchedFeatures.push(feature);
@@ -3348,7 +3349,7 @@ function populateCanyonFeatures() {
 					}
 				} else {
 					matchesAll = false;
-					console.log('Feature', feature, 'not found in CSV for trim level:', trimLevel);
+					console.log('Feature', feature, 'not found in CSV for trim level:', trimLevel, 'columnIndex:', columnIndex, 'category:', category);
 				}
 			});
 			
@@ -3769,12 +3770,39 @@ function populateCanyonFeatures() {
             console.log('Feature to lookup:', feature);
             console.log('Feature uppercase:', feature.toUpperCase());
             console.log('Available canyon descriptions:', Object.keys(canyonFeatureDescriptions));
+            console.log('Total canyon descriptions available:', Object.keys(canyonFeatureDescriptions).length);
+            
+            // Try exact match first
             description = canyonFeatureDescriptions[feature.toUpperCase()];
+            
+            // If not found, try fuzzy matching
             if (!description) {
+                console.log('🔍 Fuzzy matching for Canyon feature:', feature);
                 var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), canyonFeatureDescriptions);
-                description = bestMatch || 'No description available for ' + feature;
+                description = bestMatch;
+                
+                // If still not found, try partial matching
+                if (!description) {
+                    var featureUpper = feature.toUpperCase();
+                    Object.keys(canyonFeatureDescriptions).forEach(function(key) {
+                        if (!description) {
+                            if (key.includes(featureUpper) || featureUpper.includes(key)) {
+                                description = canyonFeatureDescriptions[key];
+                                console.log('✅ Found partial match for Canyon feature:', feature, '-> matched:', key);
+                            }
+                        }
+                    });
+                }
+                
+                if (!description) {
+                    description = 'No description available for ' + feature;
+                    console.log('❌ No description found for Canyon feature:', feature);
+                }
+            } else {
+                console.log('✅ Found exact match for Canyon feature:', feature);
             }
-            console.log('Found description:', description);
+            
+            console.log('Found description:', description.substring(0, 100) + '...');
         } else {
             description = featureDescriptions[feature] || 'No description available for ' + feature;
         }
