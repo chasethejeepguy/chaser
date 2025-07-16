@@ -2363,7 +2363,7 @@ function populateCanyonFeatures() {
                         var divStart = '<div class="gchoice gchoice_canyon_' + globalIndex + '" style="margin-bottom: 10px;">';
                         var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
                         var labelTag = '<label for="' + uniqueId + '" id="label_canyon_' + globalIndex + '">' + feature + '</label>';
-                        // Add blue info icons from the start like other GMC models
+                        // Add blue info icon AFTER the label exactly like Terrain, Acadia, and Yukon
                         var infoIcon = '<span class="feature-info-icon canyon-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Canyon feature description">ℹ</span>';
                         var divEnd = '</div>';
                         
@@ -3756,16 +3756,8 @@ function populateCanyonFeatures() {
                 return;
             }
             
-            // Skip adding icons to Canyon features since they already have them from initial HTML building
-            if (!$div.find('.feature-info-icon').length) {
-                var matchedFeature = Object.keys(canyonFeatureDescriptions).find(function(key) {
-                    return fuzzyMatch(key, feature, model, feature);
-                });
-                if (matchedFeature) {
-                    $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
-                    console.log('Prepended info icon before CANYON feature: ' + feature + ', matched: ' + matchedFeature);
-                }
-            }
+            // Canyon features already have their icons from initial HTML building, so skip them entirely
+            console.log('Skipping Canyon feature icon addition since Canyon already has styled icons from initial HTML building:', feature);
         });
     } else {
         // For other models, use existing logic
