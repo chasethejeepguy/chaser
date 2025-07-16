@@ -1093,12 +1093,19 @@ jQuery(document).ready(function($) {
         })
         .then(function(csvText) {
             console.log('Raw Canyon descriptions CSV:', csvText);
+            console.log('Raw Canyon descriptions CSV length:', csvText.length);
+            console.log('Raw Canyon descriptions CSV preview (first 500 chars):', csvText.substring(0, 500));
+            
             canyonFeatureDescriptions = {};
             
             // Parse CSV text line by line
             var lines = csvText.split('\n');
-            lines.forEach(function(line) {
+            console.log('Canyon descriptions total lines:', lines.length);
+            
+            lines.forEach(function(line, index) {
                 if (line.trim() && line.includes('{') && line.includes('}')) {
+                    console.log('Processing Canyon description line', index, ':', line);
+                    
                     // Find the closing brace
                     var closingBraceIndex = line.indexOf('}');
                     if (closingBraceIndex !== -1) {
@@ -1106,17 +1113,24 @@ jQuery(document).ready(function($) {
                         var description = line.substring(closingBraceIndex + 2);
                         if (feature && description) {
                             canyonFeatureDescriptions[feature] = description;
+                            console.log('Added Canyon description:', feature, '=', description);
                         }
                     }
                 }
             });
             
             console.log('Parsed Canyon feature descriptions:', canyonFeatureDescriptions);
+            console.log('Total Canyon descriptions loaded:', Object.keys(canyonFeatureDescriptions).length);
             
             if (Object.keys(canyonFeatureDescriptions).length === 0) {
                 console.warn('WARNING: No Canyon feature descriptions loaded!');
+                console.warn('Sample lines from Canyon descriptions CSV:');
+                lines.slice(0, 5).forEach(function(line, index) {
+                    console.warn('Line', index, ':', line);
+                });
             } else {
                 console.log('SUCCESS: GMC Canyon descriptions loaded successfully!');
+                console.log('First few Canyon descriptions:', Object.keys(canyonFeatureDescriptions).slice(0, 5));
             }
         }).catch(function(error) {
             console.error('Fetch error for GMC Canyon Feature Descriptions:', error.message);
@@ -3407,6 +3421,35 @@ function populateCanyonFeatures() {
 		
 		// Store the results
 		trimLevelsData[model] = matchingTrimLevels;
+		
+		// Update the HTML block with trim level replacement (field 69)
+		var defaultText = 'Wonderful, it sounds like the {TRIM LEVELS} would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
+		var noMatchText = 'No matching trim levels found. Please adjust your feature selections or contact support.';
+		
+		if (matchingTrimLevels.length > 0) {
+			var trimText = matchingTrimLevels.length > 2
+				? matchingTrimLevels.slice(0, -1).join(', ') + ', and ' + matchingTrimLevels[matchingTrimLevels.length - 1]
+				: matchingTrimLevels.join(' and ');
+			var updatedText = defaultText.replace('{TRIM LEVELS}', trimText);
+			
+			// Update field 69 with the trim level replacement
+			var htmlBlockField69 = $('#field_' + formId + '_69');
+			if (htmlBlockField69.length) {
+				htmlBlockField69.find('p').text(updatedText);
+				console.log('✅ HTML block (ID: 69) updated for ' + model + ' with: ' + updatedText);
+			} else {
+				console.warn('❌ HTML block (ID: 69) not found for ' + model);
+			}
+		} else {
+			// No matching trim levels found
+			var htmlBlockField69 = $('#field_' + formId + '_69');
+			if (htmlBlockField69.length) {
+				htmlBlockField69.find('p').text(noMatchText);
+				console.log('⚠️ HTML block (ID: 69) updated for ' + model + ' with no-match message');
+			} else {
+				console.warn('❌ HTML block (ID: 69) not found for ' + model);
+			}
+		}
 	}
 
 	function updateTrimLevels(model) {
