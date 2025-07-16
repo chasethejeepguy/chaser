@@ -577,7 +577,7 @@ jQuery(document).ready(function($) {
     var makeKiaFieldId = 83;
     var modelKiaFieldId = 84;
     var yearFoundFieldId = 124;
-    var makeFoundFieldId = 125;
+    var makeFoundFieldId = 138;
     var modelFoundFieldId = 126;
     var customerCommentFieldId = 113;
     var availabilityFieldId = 26;
@@ -632,8 +632,8 @@ jQuery(document).ready(function($) {
     var gmcModelFieldId = 107;
     var terrainCheckboxFieldId = 129;
     var terrainHtmlBlockFieldId = 137;
-    var acadiaCheckboxFieldId = 125;
-    var acadiaHtmlBlockFieldId = 125;
+    var acadiaCheckboxFieldId = 138;
+    var acadiaHtmlBlockFieldId = 138;
     var yukonCheckboxFieldId = 139;
     var yukonHtmlBlockFieldId = 139;
 
@@ -1429,38 +1429,38 @@ function populateAcadiaFeatures() {
     console.log('Selector 1 (#field_' + formId + '_' + acadiaHtmlBlockFieldId + '):', htmlBlock.length);
     
     if (!htmlBlock.length) {
-        htmlBlock = $('#field_' + formId + '_125');
-        console.log('Selector 2 (#field_' + formId + '_125):', htmlBlock.length);
+        htmlBlock = $('#field_' + formId + '_138');
+        console.log('Selector 2 (#field_' + formId + '_138):', htmlBlock.length);
     }
     if (!htmlBlock.length) {
-        htmlBlock = $('#input_' + formId + '_125');
-        console.log('Selector 3 (#input_' + formId + '_125):', htmlBlock.length);
+        htmlBlock = $('#input_' + formId + '_138');
+        console.log('Selector 3 (#input_' + formId + '_138):', htmlBlock.length);
     }
     if (!htmlBlock.length) {
-        htmlBlock = $('[id*="125"]').filter(function() {
+        htmlBlock = $('[id*="138"]').filter(function() {
             return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
         });
-        console.log('Selector 4 (wildcard [id*="125"]):', htmlBlock.length);
+        console.log('Selector 4 (wildcard [id*="138"]):', htmlBlock.length);
     }
     
-    // Log all elements with 125 in ID
-    var all125Elements = $('[id*="125"]');
-    console.log('All elements with 125 in ID:');
-    all125Elements.each(function(i) {
+    // Log all elements with 138 in ID
+    var all138Elements = $('[id*="138"]');
+    console.log('All elements with 138 in ID:');
+    all138Elements.each(function(i) {
         console.log('  ' + i + ': ' + this.id + ' (tag: ' + this.tagName + ', class: ' + $(this).attr('class') + ')');
     });
     
-    console.log('HTML Block field (ID: 125) debug:', {
+    console.log('HTML Block field (ID: 138) debug:', {
         selector: '#field_' + formId + '_' + acadiaHtmlBlockFieldId,
         exists: htmlBlock.length > 0,
         visible: htmlBlock.length ? htmlBlock.is(':visible') : false,
         content: htmlBlock.length ? htmlBlock.html().substring(0, 200) : 'N/A',
         actualId: htmlBlock.length ? htmlBlock.attr('id') : 'N/A',
-        allFields125: $('[id*="125"]').map(function() { return this.id; }).get()
+        allFields138: $('[id*="138"]').map(function() { return this.id; }).get()
     });
     
     if (!htmlBlock.length) {
-        console.warn('Acadia HTML block field (ID: 125) not found with any selector');
+        console.warn('Acadia HTML block field (ID: 138) not found with any selector');
         console.log('All form fields:', $('#gform_fields_' + formId).find('.gfield').map(function() { 
             return { id: $(this).attr('id'), class: $(this).attr('class') }; 
         }).get());
@@ -1576,7 +1576,7 @@ function populateAcadiaFeatures() {
                 console.log('  - HTML Block display style:', htmlBlock.css('display'));
                 console.log('  - HTML Block current content length:', htmlBlock.html().length);
 
-                // Replace {acadia feature checkboxes} placeholder in field 125
+                // Replace {acadia feature checkboxes} placeholder in field 138
                 var htmlContent = htmlBlock.html();
                 console.log('📝 HTML Block content before replacement (length: ' + htmlContent.length + '):', htmlContent);
                 console.log('🔍 Looking for placeholder: {acadia feature checkboxes}');
@@ -1587,18 +1587,18 @@ function populateAcadiaFeatures() {
                 if (htmlContent.indexOf('{acadia feature checkboxes}') !== -1) {
                     htmlContent = htmlContent.replace('{acadia feature checkboxes}', html);
                     htmlBlock.html(htmlContent);
-                    console.log('✅ Replaced {acadia feature checkboxes} placeholder in field 125');
+                    console.log('✅ Replaced {acadia feature checkboxes} placeholder in field 138');
                 } else {
                     // If no placeholder found, try to find a suitable container or replace entire content
                     var targetContainer = htmlBlock.find('.ginput_container, .gfield_html_formatted').first();
                     if (targetContainer.length) {
                         console.log('🎯 Found container, replacing its content');
                         targetContainer.html(html);
-                        console.log('✅ Replaced content in container within field 125');
+                        console.log('✅ Replaced content in container within field 138');
                     } else {
                         console.log('⚠️ No container found, replacing entire HTML block content');
                         htmlBlock.html(html);
-                        console.log('✅ Replaced entire content of field 125 (no placeholder or container found)');
+                        console.log('✅ Replaced entire content of field 138 (no placeholder or container found)');
                     }
                 }
                 
@@ -1631,7 +1631,7 @@ function populateAcadiaFeatures() {
                 });
 
                 acadiaPopulated = true;
-                console.log('Acadia features populated into 5 columns in field 125');
+                console.log('Acadia features populated into 5 columns in field 138');
 
                 // Bind change events and add info icons
                 htmlBlock.find('input[type="checkbox"]').off('change.ACADIAFeatures').on('change.ACADIAFeatures', function() {
@@ -2788,13 +2788,13 @@ function populateYukonFeatures() {
         htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
         trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
     } else if (model === 'ACADIA') {
-        // For ACADIA, checkboxes are in field 125 (HTML block)
+        // For ACADIA, checkboxes are in field 138 (HTML block)
         checkboxField = $('#field_' + formId + '_' + acadiaHtmlBlockFieldId);
         if (!checkboxField.length) {
-            checkboxField = $('#field_' + formId + '_125');
+            checkboxField = $('#field_' + formId + '_138');
         }
         if (!checkboxField.length) {
-            checkboxField = $('[id*="125"]').filter(function() {
+            checkboxField = $('[id*="138"]').filter(function() {
                 return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
             });
         }
@@ -2802,7 +2802,7 @@ function populateYukonFeatures() {
         console.log('ACADIA checkboxField debug:', {
             acadiaHtmlBlockFieldId: acadiaHtmlBlockFieldId,
             selector1: '#field_' + formId + '_' + acadiaHtmlBlockFieldId,
-            selector2: '#field_' + formId + '_125',
+            selector2: '#field_' + formId + '_138',
             found: checkboxField.length,
             actualId: checkboxField.attr('id'),
             hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
@@ -3040,7 +3040,7 @@ function populateYukonFeatures() {
             console.log('All form field IDs:', formFields);
         }
         if (model === 'ACADIA') {
-            console.warn('ACADIA HTML block field (ID: 125) not found or not visible, checking form structure');
+            console.warn('ACADIA HTML block field (ID: 138) not found or not visible, checking form structure');
             var formFields = $('#gform_fields_' + formId).find('.gfield').map(function() { return $(this).attr('id'); }).get();
             console.log('All form field IDs:', formFields);
         }
@@ -4791,7 +4791,7 @@ function pushToDriveCentric(source) {
         selectedMake = makeFound;
         selectedModel = modelFound;
         vin = '';
-        console.log('Using found fields (IDs: 124, 125, 126) for DriveCentric:', { stock: selectedStock, year: selectedYear, make: selectedMake, model: selectedModel });
+                        console.log('Using found fields (IDs: 124, 138, 126) for DriveCentric:', { stock: selectedStock, year: selectedYear, make: selectedMake, model: selectedModel });
     } else if (kiaFieldsValid) {
         selectedStock = stockKia;
         selectedYear = yearKia;
