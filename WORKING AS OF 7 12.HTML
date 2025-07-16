@@ -834,41 +834,37 @@ jQuery(document).ready(function($) {
             console.log('GMC Terrain descriptions CSV fetched successfully, length:', csvText.length);
             console.log('First 500 characters of CSV:', csvText.substring(0, 500));
             
-            // Parse the CSV - handle complex format with escaped quotes and multi-line descriptions
+            // Parse the CSV - handle {FEATURE:DESCRIPTION} format
             terrainFeatureDescriptions = {};
             
-            // Split by lines and process each line
-            var lines = csvText.split('\n').filter(function(line) { return line.trim(); });
+            // The CSV format is: {FEATURE :DESCRIPTION}
+            // Split by } to get each feature block
+            var blocks = csvText.split('}');
+            console.log('Total terrain blocks found:', blocks.length);
             
-            lines.forEach(function(line, index) {
-                try {
-                    // Each line should be in format: "FEATURE NAME (DESCRIPTION)"
-                    // Handle escaped quotes in feature names (e.g., "19"" becomes 19")
-                    var match = line.match(/^"([^"]*(?:""[^"]*)*)" \((.+)\)$/);
-                    if (match) {
-                        var feature = match[1].replace(/""/g, '"').trim(); // Unescape quotes
-                        var description = match[2].trim(); // Get description
+            for (var i = 0; i < blocks.length; i++) {
+                var block = blocks[i].trim();
+                if (block.length > 0) {
+                    console.log('Processing terrain block ' + i + ':', block.substring(0, 100));
+                    
+                    // Remove opening { and find the colon separator
+                    block = block.replace(/^{/, '');
+                    var colonIndex = block.indexOf(':');
+                    
+                    if (colonIndex > 0) {
+                        var feature = block.substring(0, colonIndex).trim().toUpperCase();
+                        var description = block.substring(colonIndex + 1).trim();
                         
-                        // Store with case-insensitive key for matching
-                        terrainFeatureDescriptions[feature.toUpperCase()] = description;
-                        console.log('Loaded GMC Terrain description for:', feature);
+                        // Clean up the description
+                        description = description.replace(/^"|"$/g, '');
+                        
+                        terrainFeatureDescriptions[feature] = description;
+                        console.log('✅ Terrain feature stored:', feature, '=', description.substring(0, 100));
                     } else {
-                        // Try alternative parsing for entries without quotes
-                        var altMatch = line.match(/^([^(]+) \((.+)\)$/);
-                        if (altMatch) {
-                            var feature = altMatch[1].trim();
-                            var description = altMatch[2].trim();
-                            
-                            terrainFeatureDescriptions[feature.toUpperCase()] = description;
-                            console.log('Loaded GMC Terrain description (alt format) for:', feature);
-                        } else {
-                            console.warn('Could not parse terrain description line:', line.substring(0, 100));
-                        }
+                        console.log('⚠️ Could not parse terrain block (no colon found):', block.substring(0, 100));
                     }
-                } catch (error) {
-                    console.error('Error parsing terrain description line:', error, line.substring(0, 100));
                 }
-            });
+            }
             
             console.log('GMC Terrain Feature Descriptions loaded, features:', Object.keys(terrainFeatureDescriptions).length);
             console.log('Sample features loaded:', Object.keys(terrainFeatureDescriptions).slice(0, 5));
@@ -887,47 +883,43 @@ jQuery(document).ready(function($) {
     // Load GMC Acadia feature descriptions from CSV
     var acadiaFeatureDescriptions = {};
     function loadAcadiaFeatureDescriptions() {
-        var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcacadiadescriptions.csv';
+        var csvUrl = 'https://www.hutchinsonautoteam.com/gmcmodels/gmcacadiadescriptions.csv';
         console.log('🔥 ACADIA DESCRIPTIONS - Loading GMC Acadia descriptions from:', csvUrl);
         fetchCsvWithRetry(csvUrl, 'GMC Acadia Feature Descriptions', 3, 1000).then(function(csvText) {
             console.log('GMC Acadia descriptions CSV fetched successfully, length:', csvText.length);
             console.log('First 500 characters of CSV:', csvText.substring(0, 500));
             
-            // Parse the CSV - handle complex format with escaped quotes and multi-line descriptions
+            // Parse the CSV - handle {FEATURE:DESCRIPTION} format
             acadiaFeatureDescriptions = {};
             
-            // Split by lines and process each line
-            var lines = csvText.split('\n').filter(function(line) { return line.trim(); });
+            // The CSV format is: {FEATURE :DESCRIPTION}
+            // Split by } to get each feature block
+            var blocks = csvText.split('}');
+            console.log('Total acadia blocks found:', blocks.length);
             
-            lines.forEach(function(line, index) {
-                try {
-                    // Each line should be in format: "FEATURE NAME (DESCRIPTION)"
-                    // Handle escaped quotes in feature names (e.g., "19"" becomes 19")
-                    var match = line.match(/^"([^"]*(?:""[^"]*)*)" \((.+)\)$/);
-                    if (match) {
-                        var feature = match[1].replace(/""/g, '"').trim(); // Unescape quotes
-                        var description = match[2].trim(); // Get description
+            for (var i = 0; i < blocks.length; i++) {
+                var block = blocks[i].trim();
+                if (block.length > 0) {
+                    console.log('Processing acadia block ' + i + ':', block.substring(0, 100));
+                    
+                    // Remove opening { and find the colon separator
+                    block = block.replace(/^{/, '');
+                    var colonIndex = block.indexOf(':');
+                    
+                    if (colonIndex > 0) {
+                        var feature = block.substring(0, colonIndex).trim().toUpperCase();
+                        var description = block.substring(colonIndex + 1).trim();
                         
-                        // Store with case-insensitive key for matching
-                        acadiaFeatureDescriptions[feature.toUpperCase()] = description;
-                        console.log('Loaded GMC Acadia description for:', feature);
+                        // Clean up the description
+                        description = description.replace(/^"|"$/g, '');
+                        
+                        acadiaFeatureDescriptions[feature] = description;
+                        console.log('✅ Acadia feature stored:', feature, '=', description.substring(0, 100));
                     } else {
-                        // Try alternative parsing for entries without quotes
-                        var altMatch = line.match(/^([^(]+) \((.+)\)$/);
-                        if (altMatch) {
-                            var feature = altMatch[1].trim();
-                            var description = altMatch[2].trim();
-                            
-                            acadiaFeatureDescriptions[feature.toUpperCase()] = description;
-                            console.log('Loaded GMC Acadia description (alt format) for:', feature);
-                        } else {
-                            console.warn('Could not parse acadia description line:', line.substring(0, 100));
-                        }
+                        console.log('⚠️ Could not parse acadia block (no colon found):', block.substring(0, 100));
                     }
-                } catch (error) {
-                    console.error('Error parsing acadia description line:', error, line.substring(0, 100));
                 }
-            });
+            }
             
             console.log('GMC Acadia Feature Descriptions loaded, features:', Object.keys(acadiaFeatureDescriptions).length);
             console.log('Sample features loaded:', Object.keys(acadiaFeatureDescriptions).slice(0, 5));
