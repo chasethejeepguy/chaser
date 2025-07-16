@@ -622,6 +622,8 @@ jQuery(document).ready(function($) {
     var gmcModelFieldId = 107;
     var terrainCheckboxFieldId = 129;
     var terrainHtmlBlockFieldId = 137;
+    var yukonCheckboxFieldId = 139;
+    var yukonHtmlBlockFieldId = 139;
 
     // Global variables
     var vehicleData = null;
@@ -651,7 +653,8 @@ jQuery(document).ready(function($) {
         'SPORTAGE': { fieldId: sportageCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/kiamodels/SPORTAGE.csv', modelFilter: 'Sportage' },
         'SPORTAGE-HYBRID': { fieldId: sportageHybridCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/kiamodels/SPORTAGE-HYBRID.csv', modelFilter: 'Sportage Hybrid' },
         'TELLURIDE': { fieldId: tellurideCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/kiamodels/TELLURIDE.csv', modelFilter: 'Telluride' },
-        'TERRAIN': { fieldId: terrainCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/terrain.csv', modelFilter: 'Terrain', isGmc: true }
+        'TERRAIN': { fieldId: terrainCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/terrain.csv', modelFilter: 'Terrain', isGmc: true },
+        'YUKON': { fieldId: yukonCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/yukon.csv', modelFilter: 'Yukon', isGmc: true }
     };
 
     // Email mappings
@@ -863,6 +866,54 @@ jQuery(document).ready(function($) {
         }).catch(function(error) {
             console.error('Fetch error for GMC Terrain Feature Descriptions:', error.message);
             terrainFeatureDescriptions = {};
+        });
+    }
+
+    // Load GMC Yukon feature descriptions from CSV
+    var yukonFeatureDescriptions = {};
+    function loadYukonFeatureDescriptions() {
+        var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcyukondescriptions.csv';
+        console.log('Loading GMC Yukon descriptions from:', csvUrl);
+        fetchCsvWithRetry(csvUrl, 'GMC Yukon Feature Descriptions', 3, 1000).then(function(csvText) {
+            console.log('GMC Yukon descriptions CSV fetched successfully, length:', csvText.length);
+            console.log('First 500 characters of CSV:', csvText.substring(0, 500));
+            
+            // Parse the CSV - handle complex format with curly braces and colon separators
+            yukonFeatureDescriptions = {};
+            
+            // Split by lines and process each line
+            var lines = csvText.split('\n').filter(function(line) { return line.trim(); });
+            
+            lines.forEach(function(line, index) {
+                try {
+                    // Each line should be in format: {FEATURE NAME:DESCRIPTION}
+                    var match = line.match(/^\{([^:]+):(.+)\}$/);
+                    if (match) {
+                        var feature = match[1].trim();
+                        var description = match[2].trim();
+                        
+                        // Store with case-insensitive key for matching
+                        yukonFeatureDescriptions[feature.toUpperCase()] = description;
+                        console.log('Loaded GMC Yukon description for:', feature);
+                    } else {
+                        console.warn('Could not parse yukon description line:', line.substring(0, 100));
+                    }
+                } catch (error) {
+                    console.error('Error parsing yukon description line:', error, line.substring(0, 100));
+                }
+            });
+            
+            console.log('GMC Yukon Feature Descriptions loaded, features:', Object.keys(yukonFeatureDescriptions).length);
+            console.log('Sample features loaded:', Object.keys(yukonFeatureDescriptions).slice(0, 5));
+            console.log('All yukon features loaded:', Object.keys(yukonFeatureDescriptions));
+            if (Object.keys(yukonFeatureDescriptions).length === 0) {
+                console.warn('No GMC Yukon descriptions were parsed from CSV');
+            } else {
+                console.log('SUCCESS: GMC Yukon descriptions loaded successfully!');
+            }
+        }).catch(function(error) {
+            console.error('Fetch error for GMC Yukon Feature Descriptions:', error.message);
+            yukonFeatureDescriptions = {};
         });
     }
 
@@ -1275,6 +1326,280 @@ jQuery(document).ready(function($) {
     });
 }
 
+// Global variables to track population state
+var yukonPopulated = false;
+
+function populateYukonFeatures() {
+    console.log('=== populateYukonFeatures called ===');
+    console.log('Current yukonPopulated flag:', yukonPopulated);
+    console.log('Form ID:', formId);
+    console.log('yukonHtmlBlockFieldId:', yukonHtmlBlockFieldId);
+    
+    if (yukonPopulated) {
+        console.log('Yukon features already populated, skipping');
+        return;
+    }
+
+    var config = modelConfigs['YUKON'];
+    if (!config) {
+        console.warn('Yukon configuration not found');
+        console.log('Available modelConfigs:', Object.keys(modelConfigs));
+        return;
+    }
+    console.log('Yukon config found:', config);
+
+    // Try multiple selectors to find the HTML block field
+    console.log('Searching for HTML block field with multiple selectors...');
+    var htmlBlock = $('#field_' + formId + '_' + yukonHtmlBlockFieldId);
+    console.log('Selector 1 (#field_' + formId + '_' + yukonHtmlBlockFieldId + '):', htmlBlock.length);
+    
+    if (!htmlBlock.length) {
+        htmlBlock = $('#field_' + formId + '_139');
+        console.log('Selector 2 (#field_' + formId + '_139):', htmlBlock.length);
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('#input_' + formId + '_139');
+        console.log('Selector 3 (#input_' + formId + '_139):', htmlBlock.length);
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('[id*="139"]').filter(function() {
+            return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+        });
+        console.log('Selector 4 (wildcard [id*="139"]):', htmlBlock.length);
+    }
+    
+    // Log all elements with 139 in ID
+    var all139Elements = $('[id*="139"]');
+    console.log('All elements with 139 in ID:');
+    all139Elements.each(function(i) {
+        console.log('  ' + i + ': ' + this.id + ' (tag: ' + this.tagName + ', class: ' + $(this).attr('class') + ')');
+    });
+    
+    console.log('HTML Block field (ID: 139) debug:', {
+        selector: '#field_' + formId + '_' + yukonHtmlBlockFieldId,
+        exists: htmlBlock.length > 0,
+        visible: htmlBlock.length ? htmlBlock.is(':visible') : false,
+        content: htmlBlock.length ? htmlBlock.html().substring(0, 200) : 'N/A',
+        actualId: htmlBlock.length ? htmlBlock.attr('id') : 'N/A',
+        allFields139: $('[id*="139"]').map(function() { return this.id; }).get()
+    });
+    
+    if (!htmlBlock.length) {
+        console.warn('Yukon HTML block field (ID: 139) not found with any selector');
+        console.log('All form fields:', $('#gform_fields_' + formId).find('.gfield').map(function() { 
+            return { id: $(this).attr('id'), class: $(this).attr('class') }; 
+        }).get());
+        
+        // Try to find any HTML block field
+        var allHtmlFields = $('[id*="field"][id*="' + formId + '"]').filter(function() {
+            return $(this).find('.gfield_html').length > 0 || $(this).hasClass('gfield_html');
+        });
+        console.log('All HTML block fields found:', allHtmlFields.map(function() { return this.id; }).get());
+        return;
+    }
+
+    console.log('Fetching yukon CSV from:', config.csvUrl);
+    fetchCsvWithRetry(config.csvUrl, 'Yukon', 3, 1000).then(function(csvText) {
+        console.log('Yukon CSV fetched successfully, length:', csvText.length);
+        console.log('CSV preview (first 500 chars):', csvText.substring(0, 500));
+        
+        Papa.parse(csvText, {
+            skipEmptyLines: true,
+            complete: function(results) {
+                console.log('Yukon CSV parsed for population, rows: ' + results.data.length);
+                console.log('First few rows:', results.data.slice(0, 3));
+                
+                var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+                var featureGroups = {};
+                var currentCategory = null;
+                var features = [];
+
+                results.data.forEach(function(row, rowIndex) {
+                    if (row.length > 0) {
+                        var firstCell = row[0] ? row[0].trim() : '';
+                        if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+                            if (currentCategory && features.length > 0) {
+                                featureGroups[currentCategory] = features;
+                                console.log('Stored category: ' + currentCategory + ' with ' + features.length + ' features');
+                            }
+                            currentCategory = firstCell.match(/\{(.+)\}/)[1];
+                            // Clean up features by removing extra quotes and trimming
+                            features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                // Remove surrounding quotes if present
+                                var cleaned = f.trim();
+                                if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                    cleaned = cleaned.slice(1, -1);
+                                }
+                                // Handle double quotes inside the string (CSV escape format)
+                                cleaned = cleaned.replace(/""/g, '"');
+                                return cleaned;
+                            });
+                            console.log('Row ' + rowIndex + ': Parsed category: ' + currentCategory + ', features: ' + features.length);
+                            console.log('Features for ' + currentCategory + ':', features.slice(0, 5)); // Show first 5 features
+                            console.log('Raw features before cleaning:', row.slice(1, 6)); // Show raw features
+                        }
+                    }
+                });
+                if (currentCategory && features.length > 0) {
+                    featureGroups[currentCategory] = features;
+                    console.log('Final stored category: ' + currentCategory + ' with ' + features.length + ' features');
+                }
+
+                console.log('Feature groups summary:', Object.keys(featureGroups).map(function(cat) {
+                    return cat + ': ' + featureGroups[cat].length + ' features';
+                }));
+
+                if (Object.keys(featureGroups).length !== 5) {
+                    console.error('Expected 5 categories, found: ' + Object.keys(featureGroups).length);
+                    console.error('Found categories:', Object.keys(featureGroups));
+                    return;
+                }
+
+                console.log('Building HTML for yukon features...');
+                var html = '<div class="feature-groups">';
+                var globalIndex = 0;
+                categories.forEach(function(category) {
+                    var catFeatures = featureGroups[category] || [];
+                    console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
+                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
+                    catFeatures.forEach(function(feature, index) {
+                        var uniqueId = 'choice_3_yukon_' + globalIndex;
+                        var inputName = 'input_yukon_' + globalIndex;
+                        var simpleValue = 'yukon_feature_' + globalIndex;
+                        
+                        // Initialize global feature mapping
+                        if (!window.yukonFeatureMap) {
+                            window.yukonFeatureMap = {};
+                        }
+                        window.yukonFeatureMap[simpleValue] = feature;
+                        
+                        // Build HTML using simple string concatenation to avoid any quote issues
+                        var divStart = '<div class="gchoice gchoice_yukon_' + globalIndex + '">';
+                        var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
+                        var labelTag = '<label for="' + uniqueId + '" id="label_yukon_' + globalIndex + '">' + feature + '</label>';
+                        // Add feature info icon for yukon features
+                        var infoIcon = '<span class="feature-info-icon yukon-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Yukon feature description">ℹ</span>';
+                        var divEnd = '</div>';
+                        
+                        html += divStart + inputTag + labelTag + infoIcon + divEnd;
+                        globalIndex++;
+                    });
+                    html += '</div></div>';
+                });
+                html += '</div>';
+                
+                console.log('🔨 Generated HTML length:', html.length);
+                console.log('🔨 Generated HTML preview:', html.substring(0, 300));
+                console.log('🔨 Total checkboxes to create:', globalIndex);
+
+                // COMPREHENSIVE DEBUG: Check HTML block state
+                console.log('🔍 HTML BLOCK DEBUG BEFORE REPLACEMENT:');
+                console.log('  - HTML Block exists:', htmlBlock.length > 0);
+                console.log('  - HTML Block ID:', htmlBlock.attr('id'));
+                console.log('  - HTML Block visible:', htmlBlock.is(':visible'));
+                console.log('  - HTML Block parent visible:', htmlBlock.parent().is(':visible'));
+                console.log('  - HTML Block display style:', htmlBlock.css('display'));
+                console.log('  - HTML Block current content length:', htmlBlock.html().length);
+
+                // Replace {yukon feature checkboxes} placeholder in field 139
+                var htmlContent = htmlBlock.html();
+                console.log('📝 HTML Block content before replacement (length: ' + htmlContent.length + '):', htmlContent);
+                console.log('🔍 Looking for placeholder: {yukon feature checkboxes}');
+                console.log('🔍 Placeholder found:', htmlContent.indexOf('{yukon feature checkboxes}') !== -1);
+                
+                // FORCE REPLACEMENT REGARDLESS OF PLACEHOLDER
+                console.log('🔧 FORCING HTML REPLACEMENT...');
+                if (htmlContent.indexOf('{yukon feature checkboxes}') !== -1) {
+                    htmlContent = htmlContent.replace('{yukon feature checkboxes}', html);
+                    htmlBlock.html(htmlContent);
+                    console.log('✅ Replaced {yukon feature checkboxes} placeholder in field 139');
+                } else {
+                    // If no placeholder found, try to find a suitable container or replace entire content
+                    var targetContainer = htmlBlock.find('.ginput_container, .gfield_html_formatted').first();
+                    if (targetContainer.length) {
+                        console.log('🎯 Found container, replacing its content');
+                        targetContainer.html(html);
+                        console.log('✅ Replaced content in container within field 139');
+                    } else {
+                        console.log('⚠️ No container found, replacing entire HTML block content');
+                        htmlBlock.html(html);
+                        console.log('✅ Replaced entire content of field 139 (no placeholder or container found)');
+                    }
+                }
+                
+                // COMPREHENSIVE DEBUG: Check HTML block state after replacement
+                console.log('🔍 HTML BLOCK DEBUG AFTER REPLACEMENT:');
+                console.log('  - HTML Block content length after replacement:', htmlBlock.html().length);
+                console.log('  - HTML Block content preview:', htmlBlock.html().substring(0, 300));
+                
+                // FORCE CHECK FOR CHECKBOXES
+                console.log('🔍 SEARCHING FOR CREATED CHECKBOXES...');
+                var createdCheckboxes = htmlBlock.find('input[type="checkbox"]');
+                console.log('✅ Checkboxes found in HTML block:', createdCheckboxes.length);
+                
+                // Also check in the entire document
+                var allYukonCheckboxes = $('input[type="checkbox"][id*="yukon"]');
+                console.log('✅ All yukon checkboxes in document:', allYukonCheckboxes.length);
+                
+                // Check for checkboxes with data-category attribute
+                var categoryCheckboxes = $('input[type="checkbox"][data-category]');
+                console.log('✅ Checkboxes with data-category:', categoryCheckboxes.length);
+                
+                // Log first few checkboxes for verification
+                createdCheckboxes.slice(0, 3).each(function(i) {
+                    console.log('Checkbox ' + i + ':', {
+                        id: $(this).attr('id'),
+                        name: $(this).attr('name'),
+                        value: $(this).attr('value'),
+                        category: $(this).attr('data-category')
+                    });
+                });
+
+                yukonPopulated = true;
+                console.log('Yukon features populated into 5 columns in field 139');
+
+                // Bind change events and add info icons
+                htmlBlock.find('input[type="checkbox"]').off('change.YUKONFeatures').on('change.YUKONFeatures', function() {
+                    console.log('YUKON checkbox changed, updating trim levels');
+                    updateTrimLevels('YUKON');
+                });
+
+                htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var feature = $(this).data('feature');
+                    console.log('=== YUKON FEATURE INFO ICON CLICKED ===');
+                    console.log('Feature clicked:', feature);
+                    console.log('Feature type:', typeof feature);
+                    console.log('Feature length:', feature ? feature.length : 'undefined');
+                    console.log('Available yukon descriptions:', Object.keys(yukonFeatureDescriptions));
+                    console.log('Total descriptions available:', Object.keys(yukonFeatureDescriptions).length);
+                    console.log('All descriptions:', yukonFeatureDescriptions);
+                    
+                    // Handle case where feature might be undefined or not a string
+                    if (!feature || typeof feature !== 'string') {
+                        console.error('Invalid feature:', feature);
+                        showFeatureDescription('Unknown Feature', 'Feature information not available');
+                        return;
+                    }
+                    
+                    console.log('Looking for feature (uppercase):', feature.toUpperCase());
+                    // Use GMC Yukon descriptions instead of KIA descriptions (case-insensitive)
+                    var description = yukonFeatureDescriptions[feature.toUpperCase()] || 'No GMC Yukon description available for ' + feature;
+                    console.log('Found description:', description);
+                    console.log('=== END YUKON FEATURE INFO DEBUG ===');
+                    showFeatureDescription(feature, description);
+                });
+            },
+            error: function(error) {
+                console.error('Papa Parse error for Yukon population: ' + error);
+            }
+        });
+    }).catch(function(error) {
+        console.error('Fetch error for Yukon population: ' + error.message);
+    });
+}
+
 	function processTerrainTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
 		console.log('Processing TERRAIN trim levels for selected features:', selectedFeatures);
 		
@@ -1550,6 +1875,274 @@ jQuery(document).ready(function($) {
 		trimLevelsData[model] = matchingTrimLevels;
 	}
 
+	function processYukonTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
+		console.log('Processing YUKON trim levels for selected features:', selectedFeatures);
+		
+		var trimLevels = ['AT4', 'DENALI', 'ELEVATION', 'AT4 ULTIMATE', 'DENALI ULTIMATE'];
+		var matchingTrimLevels = [];
+		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+		var featureToColumnMap = {};
+		var featureToCategoryMap = {};
+		var trimLevelRows = {};
+		var trimLevelRowsByCategory = {};
+		var currentCategory = null;
+		
+		// Parse the CSV data to map features to columns and find trim level rows
+		csvData.forEach(function(row, rowIndex) {
+			if (row.length > 0) {
+				var firstCell = row[0] ? row[0].trim() : '';
+				
+				// Check if this is a category header row
+				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+					var category = firstCell.match(/\{(.+)\}/)[1];
+					currentCategory = category;
+					console.log('Found category:', category);
+					
+					// Initialize category storage if not exists
+					if (!trimLevelRowsByCategory[category]) {
+						trimLevelRowsByCategory[category] = {};
+					}
+					
+					// Map features to their column indices
+					for (var i = 1; i < row.length; i++) {
+						var feature = row[i] ? row[i].trim() : '';
+						if (feature && feature !== '') {
+							// Clean up the feature name the same way as in populateYukonFeatures
+							var cleanedFeature = feature;
+							if (cleanedFeature.startsWith('"') && cleanedFeature.endsWith('"')) {
+								cleanedFeature = cleanedFeature.slice(1, -1);
+							}
+							cleanedFeature = cleanedFeature.replace(/""/g, '"');
+							
+							featureToColumnMap[cleanedFeature] = i;
+							featureToCategoryMap[cleanedFeature] = category;
+							console.log('Mapped feature "' + cleanedFeature + '" (raw: "' + feature + '") to column ' + i + ' in category ' + category);
+						}
+					}
+				}
+				// Check if this is a trim level row
+				else if (trimLevels.some(function(trim) { return firstCell.startsWith(trim); }) && currentCategory) {
+					var trimLevel = firstCell.split(' ')[0] === 'AT4' && firstCell.indexOf('ULTIMATE') !== -1 ? 'AT4 ULTIMATE' : 
+									firstCell.split(' ')[0] === 'DENALI' && firstCell.indexOf('ULTIMATE') !== -1 ? 'DENALI ULTIMATE' : 
+									firstCell.split(' ')[0];
+					
+					// Store in both global and category-specific storage
+					trimLevelRows[trimLevel] = row;
+					trimLevelRowsByCategory[currentCategory][trimLevel] = row;
+					console.log('Found trim level row for:', trimLevel, 'in category:', currentCategory);
+				}
+			}
+		});
+		
+		console.log('Feature to column mapping:', featureToColumnMap);
+		console.log('Feature to category mapping:', featureToCategoryMap);
+		console.log('Trim level rows:', Object.keys(trimLevelRows));
+		console.log('Trim level rows by category:', trimLevelRowsByCategory);
+		
+		// Check which trim levels have all selected features
+		trimLevels.forEach(function(trimLevel) {
+			if (trimLevelRows[trimLevel]) {
+				var hasAllFeatures = true;
+				var featureResults = [];
+				
+				selectedFeatures.forEach(function(feature) {
+					var columnIndex = featureToColumnMap[feature];
+					var matchedFeature = feature;
+					
+					// If exact match not found, try fuzzy matching
+					if (columnIndex === undefined) {
+						console.log('Feature "' + feature + '" not found in column mapping, trying fuzzy matching...');
+						var bestMatch = null;
+						var bestScore = 0;
+						var threshold = 0.3; // Lower threshold for partial matches
+						
+						// Try to find partial matches
+						Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+							var score = 0;
+							
+							// Check if the selected feature is contained in the CSV feature
+							if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+								score = 0.8; // High score for containment
+							}
+							// Check if CSV feature starts with the selected feature
+							else if (csvFeature.toLowerCase().startsWith(feature.toLowerCase())) {
+								score = 0.7;
+							}
+							// Check if selected feature is a significant part of CSV feature
+							else if (feature.length >= 3 && csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+								score = 0.6;
+							}
+							// Fuzzy string matching as fallback
+							else {
+								var featureNorm = feature.toLowerCase().replace(/[^a-z0-9]/g, '');
+								var csvFeatureNorm = csvFeature.toLowerCase().replace(/[^a-z0-9]/g, '');
+								if (featureNorm.length > 0 && csvFeatureNorm.length > 0) {
+									var commonLength = 0;
+									var maxLength = Math.max(featureNorm.length, csvFeatureNorm.length);
+									for (var i = 0; i < Math.min(featureNorm.length, csvFeatureNorm.length); i++) {
+										if (featureNorm[i] === csvFeatureNorm[i]) {
+											commonLength++;
+										} else {
+											break;
+										}
+									}
+									score = commonLength / maxLength;
+								}
+							}
+							
+							console.log('Fuzzy match attempt: "' + feature + '" vs "' + csvFeature + '": score=' + score);
+							
+							if (score > bestScore && score >= threshold) {
+								bestScore = score;
+								bestMatch = csvFeature;
+							}
+						});
+						
+						if (bestMatch) {
+							console.log('Found fuzzy match for "' + feature + '": "' + bestMatch + '" (score: ' + bestScore + ')');
+							columnIndex = featureToColumnMap[bestMatch];
+							matchedFeature = bestMatch;
+						}
+					}
+					
+					if (columnIndex !== undefined) {
+						// Get the category for this feature
+						var featureCategory = featureToCategoryMap[matchedFeature];
+						var value = null;
+						
+						// Use category-specific trim level data if available
+						if (featureCategory && trimLevelRowsByCategory[featureCategory] && trimLevelRowsByCategory[featureCategory][trimLevel]) {
+							value = trimLevelRowsByCategory[featureCategory][trimLevel][columnIndex];
+							console.log('Using category-specific data for ' + trimLevel + ' in category ' + featureCategory + ', column ' + columnIndex + ': "' + value + '"');
+						} else {
+							// Fallback to global trim level data
+							value = trimLevelRows[trimLevel][columnIndex];
+							console.log('Using global data for ' + trimLevel + ', column ' + columnIndex + ': "' + value + '"');
+						}
+						// Clean up the value and check for YES (handle edge cases like "YNO" -> "NO")
+						var cleanedValue = value ? value.trim().toLowerCase() : '';
+						var hasFeature = false;
+						
+						if (cleanedValue === 'yes') {
+							hasFeature = true;
+						} else if (cleanedValue === 'no') {
+							hasFeature = false;
+						} else if (cleanedValue.startsWith('y') && cleanedValue.length <= 4) {
+							// Handle cases like "YNO" which should be "NO"
+							hasFeature = false;
+							console.warn('Found malformed value "' + value + '" for feature "' + matchedFeature + '" in trim level "' + trimLevel + '", treating as NO');
+						} else {
+							// Default to false for any other value
+							hasFeature = false;
+							if (cleanedValue !== '') {
+								console.warn('Unknown value "' + value + '" for feature "' + matchedFeature + '" in trim level "' + trimLevel + '", treating as NO');
+							}
+						}
+						
+						featureResults.push({
+							feature: feature,
+							matchedFeature: matchedFeature,
+							value: value,
+							cleanedValue: cleanedValue,
+							hasFeature: hasFeature
+						});
+						
+						console.log('Feature check for ' + trimLevel + ': "' + feature + '" -> "' + matchedFeature + '" = "' + value + '" (' + cleanedValue + ') -> ' + hasFeature);
+						
+						if (!hasFeature) {
+							hasAllFeatures = false;
+						}
+					} else {
+						console.log('Feature "' + feature + '" not found in column mapping even with fuzzy matching');
+						hasAllFeatures = false;
+					}
+				});
+				
+				console.log('Trim level ' + trimLevel + ' feature check:', featureResults);
+				console.log('Has all features:', hasAllFeatures);
+				
+				if (hasAllFeatures) {
+					matchingTrimLevels.push(trimLevel);
+				}
+			}
+		});
+		
+		console.log('Matching trim levels for ' + model + ':', matchingTrimLevels);
+		
+		// Update the HTML block with results
+		var resultText = '';
+		if (matchingTrimLevels.length > 0) {
+			resultText = 'Available trim levels with your selected features: ' + matchingTrimLevels.join(', ');
+		} else {
+			resultText = 'No trim levels have all your selected features. Please adjust your selections.';
+		}
+		
+		if (htmlBlock.length) {
+			htmlBlock.find('p').text(resultText);
+		}
+		
+		// Update the trim levels button
+		if (trimLevelsButtonBlock.length) {
+			var buttonText = matchingTrimLevels.length > 0 ? 
+				'View Available Trim Levels (' + matchingTrimLevels.length + ')' : 
+				'No Matching Trim Levels';
+			
+			trimLevelsButtonBlock.html('<button type="button" id="viewTrimLevelsButton" class="button">' + buttonText + '</button>');
+			
+			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
+				e.preventDefault();
+				if (matchingTrimLevels.length > 0) {
+					var detailsHtml = '<h2>Available Trim Levels for ' + model + '</h2>';
+					detailsHtml += '<p>Based on your selected features, the following trim levels are available:</p>';
+					detailsHtml += '<ul>';
+					matchingTrimLevels.forEach(function(trimLevel) {
+						detailsHtml += '<li><strong>' + trimLevel + '</strong></li>';
+					});
+					detailsHtml += '</ul>';
+					detailsHtml += '<p>Selected features: ' + selectedFeatures.join(', ') + '</p>';
+					
+					// Show matched features for debugging
+					if (matchingTrimLevels.length > 0) {
+						detailsHtml += '<h3>Feature Matching Details:</h3>';
+						matchingTrimLevels.forEach(function(trimLevel) {
+							if (trimLevelRows[trimLevel]) {
+								detailsHtml += '<h4>' + trimLevel + '</h4><ul>';
+								selectedFeatures.forEach(function(feature) {
+									var columnIndex = featureToColumnMap[feature];
+									var matchedFeature = feature;
+									
+									// Try fuzzy matching if exact match not found
+									if (columnIndex === undefined) {
+										Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+											if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+												columnIndex = featureToColumnMap[csvFeature];
+												matchedFeature = csvFeature;
+											}
+										});
+									}
+									
+									if (columnIndex !== undefined) {
+										var value = trimLevelRows[trimLevel][columnIndex];
+										detailsHtml += '<li>' + feature + (matchedFeature !== feature ? ' (matched: ' + matchedFeature + ')' : '') + ': ' + value + '</li>';
+									}
+								});
+								detailsHtml += '</ul>';
+							}
+						});
+					}
+					
+					// Call the proper showTrimLevelsPopup function like other models
+					showTrimLevelsPopup(model, matchingTrimLevels, model);
+				} else {
+					alert('No trim levels match your selected features. Please adjust your selections.');
+				}
+			});
+		}
+		
+		// Store the results
+		trimLevelsData[model] = matchingTrimLevels;
+	}
+
 	function updateTrimLevels(model) {
     var config = modelConfigs[model];
     if (!config) {
@@ -1581,6 +2174,29 @@ jQuery(document).ready(function($) {
         
         htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
         trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    } else if (model === 'YUKON') {
+        // For YUKON, checkboxes are in field 139 (HTML block)
+        checkboxField = $('#field_' + formId + '_' + yukonHtmlBlockFieldId);
+        if (!checkboxField.length) {
+            checkboxField = $('#field_' + formId + '_139');
+        }
+        if (!checkboxField.length) {
+            checkboxField = $('[id*="139"]').filter(function() {
+                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+            });
+        }
+        
+        console.log('YUKON checkboxField debug:', {
+            yukonHtmlBlockFieldId: yukonHtmlBlockFieldId,
+            selector1: '#field_' + formId + '_' + yukonHtmlBlockFieldId,
+            selector2: '#field_' + formId + '_139',
+            found: checkboxField.length,
+            actualId: checkboxField.attr('id'),
+            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
+        });
+        
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
     } else {
         // For other models, checkboxes are in their respective fields
         checkboxField = $('#field_' + formId + '_' + config.fieldId);
@@ -1592,7 +2208,7 @@ jQuery(document).ready(function($) {
     var defaultButtonText = '<button id="viewTrimLevelsButton">View Trim Levels</button>';
     var noMatchText = 'No matching trim levels found. Please adjust your feature selections or contact support.';
 
-    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : config.fieldId) + '):', {
+    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : model === 'YUKON' ? yukonHtmlBlockFieldId : config.fieldId) + '):', {
         fieldExists: checkboxField.length > 0,
         fieldVisible: checkboxField.is(':visible'),
         fieldClasses: checkboxField.attr('class'),
@@ -1629,6 +2245,35 @@ jQuery(document).ready(function($) {
             if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
                 $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
                 console.log('Prepended info icon before TERRAIN feature: ' + feature + ', matched: ' + matchedFeature);
+            }
+        });
+    } else if (model === 'YUKON') {
+        // For YUKON, handle the different structure
+        checkboxField.find('.gchoice').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label');
+            var feature = $input.attr('value') || '';
+            
+            if (!feature || !$input.length) {
+                console.warn('Invalid YUKON checkbox structure in field (ID: ' + yukonHtmlBlockFieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class')
+                });
+                return;
+            }
+            
+            var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
+                return fuzzyMatch(key, feature, model, feature);
+            });
+            if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
+                $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
+                console.log('Prepended info icon before YUKON feature: ' + feature + ', matched: ' + matchedFeature);
             }
         });
     } else {
@@ -1671,7 +2316,7 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         e.stopPropagation();
         var feature = $(this).data('feature');
-        // Use GMC Terrain descriptions for TERRAIN model, otherwise use KIA descriptions
+        // Use GMC Terrain descriptions for TERRAIN model, GMC Yukon descriptions for YUKON model, otherwise use KIA descriptions
         var description;
         if (model === 'TERRAIN') {
             console.log('TERRAIN model detected, using GMC descriptions');
@@ -1679,6 +2324,13 @@ jQuery(document).ready(function($) {
             console.log('Feature uppercase:', feature.toUpperCase());
             console.log('Available terrain descriptions:', Object.keys(terrainFeatureDescriptions));
             description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No description available for ' + feature;
+            console.log('Found description:', description);
+        } else if (model === 'YUKON') {
+            console.log('YUKON model detected, using GMC descriptions');
+            console.log('Feature to lookup:', feature);
+            console.log('Feature uppercase:', feature.toUpperCase());
+            console.log('Available yukon descriptions:', Object.keys(yukonFeatureDescriptions));
+            description = yukonFeatureDescriptions[feature.toUpperCase()] || 'No description available for ' + feature;
             console.log('Found description:', description);
         } else {
             description = featureDescriptions[feature] || 'No description available for ' + feature;
@@ -1692,7 +2344,7 @@ jQuery(document).ready(function($) {
         showFeatureDescription(feature, description);
     });
 
-    if (!checkboxField.length || (model !== 'K5' && model !== 'TERRAIN' && !checkboxField.is(':visible'))) {
+    if (!checkboxField.length || (model !== 'K5' && model !== 'TERRAIN' && model !== 'YUKON' && !checkboxField.is(':visible'))) {
         console.log(model + ' checkbox field not found or not visible, resetting HTML block');
         if (htmlBlock.length) {
             htmlBlock.find('p').text(defaultText);
@@ -1764,6 +2416,21 @@ jQuery(document).ready(function($) {
                 checked: $input.is(':checked'),
                 labelText: $input.next('label').text().substring(0, 100)
             });
+        } else if (model === 'YUKON') {
+            // For YUKON, get feature from the global mapping using the checkbox value
+            var checkboxValue = $input.attr('value') || '';
+            feature = window.yukonFeatureMap && window.yukonFeatureMap[checkboxValue] ? window.yukonFeatureMap[checkboxValue] : '';
+            // No need to unescape since we're not storing escaped values anymore
+            
+            console.log('YUKON checkbox debug:', {
+                id: $input.attr('id'),
+                checkboxValue: checkboxValue,
+                mappedFeature: feature,
+                featureLength: feature.length,
+                name: $input.attr('name'),
+                checked: $input.is(':checked'),
+                labelText: $input.next('label').text().substring(0, 100)
+            });
         } else {
             // For other models, use the existing logic
             var $div = $input.closest('.gfield_checkbox > div, .gfield-choice-wrapper');
@@ -1827,6 +2494,24 @@ jQuery(document).ready(function($) {
                     console.log(model + ' CSV parsed, rows: ' + results.data.length);
                     console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
                     processTerrainTrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
+                }
+            });
+            return;
+        }
+        
+        // Special handling for YUKON model
+        if (model === 'YUKON') {
+            // Log the full CSV content to debug data issues
+            console.log('=== FULL YUKON CSV CONTENT ===');
+            console.log(csvText);
+            console.log('=== END YUKON CSV CONTENT ===');
+            
+            Papa.parse(csvText, {
+                skipEmptyLines: true,
+                complete: function(results) {
+                    console.log(model + ' CSV parsed, rows: ' + results.data.length);
+                    console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
+                    processYukonTrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
                 }
             });
             return;
@@ -2478,9 +3163,17 @@ function initFormBindings() {
                                     populateTerrainFeatures();
                                     console.log('terrainPopulated after call:', terrainPopulated);
                                     updateTrimLevels('TERRAIN');
+                                } else if (input.val() === 'YUKON' && input.is(':checked')) {
+                                    console.log('🚗 YUKON selected via radio button - calling populateYukonFeatures');
+                                    console.log('Current time:', new Date().toISOString());
+                                    console.log('yukonPopulated before call:', yukonPopulated);
+                                    populateYukonFeatures();
+                                    console.log('yukonPopulated after call:', yukonPopulated);
+                                    updateTrimLevels('YUKON');
                                 } else if (input.is(':checked')) {
-                                    console.log('Non-TERRAIN GMC model selected: ' + input.val());
+                                    console.log('Non-TERRAIN/YUKON GMC model selected: ' + input.val());
                                     terrainPopulated = false;
+                                    yukonPopulated = false;
                                 }
                             }
                         }
@@ -2530,9 +3223,17 @@ function initFormBindings() {
                              populateTerrainFeatures();
                              console.log('terrainPopulated after call:', terrainPopulated);
                              updateTrimLevels('TERRAIN');
+                         } else if ($(this).val() === 'YUKON' && $(this).is(':checked')) {
+                             console.log('🚗 YUKON selected via delegated radio button - calling populateYukonFeatures');
+                             console.log('Current time:', new Date().toISOString());
+                             console.log('yukonPopulated before call:', yukonPopulated);
+                             populateYukonFeatures();
+                             console.log('yukonPopulated after call:', yukonPopulated);
+                             updateTrimLevels('YUKON');
                          } else if ($(this).is(':checked')) {
-                             console.log('Non-TERRAIN GMC model selected via delegated: ' + $(this).val());
+                             console.log('Non-TERRAIN/YUKON GMC model selected via delegated: ' + $(this).val());
                              terrainPopulated = false;
+                             yukonPopulated = false;
                          }
                      }
                 }
@@ -2621,7 +3322,7 @@ function initFormBindings() {
                         updateTrimLevels(model);
                     });
                     console.log('Initialized ' + model + ' checkbox bindings');
-                    if (model === 'K5' || model === 'TERRAIN') {
+                    if (model === 'K5' || model === 'TERRAIN' || model === 'YUKON') {
                         console.log(model + '-specific binding check:', {
                             fieldId: config.fieldId,
                             checkboxIds: checkboxInputs.map(function() { return $(this).attr('id'); }).get(),
@@ -2630,7 +3331,7 @@ function initFormBindings() {
                     }
                 } else {
                     console.warn(model + ' checkbox inputs not found for Field ID: ' + config.fieldId);
-                    if (model === 'K5' || model === 'TERRAIN') {
+                    if (model === 'K5' || model === 'TERRAIN' || model === 'YUKON') {
                         console.error(model + ' checkbox inputs missing, form structure:', {
                             formFields: $('#gform_fields_' + formId).find('.gfield').map(function() { return $(this).attr('id'); }).get()
                         });
@@ -2644,7 +3345,9 @@ function initFormBindings() {
                                 console.log(model + ' checkbox field (ID: ' + config.fieldId + ') visibility changed, isVisible: ' + checkboxField.is(':visible'));
                                 if (model === 'TERRAIN' && $('#input_' + formId + '_' + gmcModelFieldId).val() === 'TERRAIN') {
                                     updateTrimLevels(model);
-                                } else if (model !== 'TERRAIN') {
+                                } else if (model === 'YUKON' && $('#input_' + formId + '_' + gmcModelFieldId).val() === 'YUKON') {
+                                    updateTrimLevels(model);
+                                } else if (model !== 'TERRAIN' && model !== 'YUKON') {
                                     updateTrimLevels(model);
                                 }
                             }
@@ -2652,12 +3355,12 @@ function initFormBindings() {
                     });
                     observer.observe(checkboxField[0], { attributes: true });
                     console.log('Initialized MutationObserver for ' + model + ' checkbox field (ID: ' + config.fieldId + ')');
-                    if (model === 'K5' || model === 'TERRAIN') {
+                    if (model === 'K5' || model === 'TERRAIN' || model === 'YUKON') {
                         console.log(model + '-specific MutationObserver initialized');
                     }
                 } else {
                     console.warn(model + ' checkbox field (ID: ' + config.fieldId + ') not found for MutationObserver');
-                    if (model === 'K5' || model === 'TERRAIN') {
+                    if (model === 'K5' || model === 'TERRAIN' || model === 'YUKON') {
                         console.error(model + ' checkbox field (ID: ' + config.fieldId + ') not found for MutationObserver, form structure:', {
                             formFields: $('#gform_fields_' + formId).find('.gfield').map(function() { return $(this).attr('id'); }).get()
                         });
@@ -2668,7 +3371,7 @@ function initFormBindings() {
 
         initCustomerInfoBindings();
 
-        // Add specific listener for TERRAIN radio button
+        // Add specific listener for TERRAIN/YUKON radio buttons
         $(document).on('change', '#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"]', function() {
             console.log('GMC model radio button changed:', {
                 id: $(this).attr('id'),
@@ -2680,9 +3383,14 @@ function initFormBindings() {
                 console.log('TERRAIN radio button detected, calling populateTerrainFeatures');
                 populateTerrainFeatures();
                 updateTrimLevels('TERRAIN');
+            } else if ($(this).val() === 'YUKON' && $(this).is(':checked')) {
+                console.log('YUKON radio button detected, calling populateYukonFeatures');
+                populateYukonFeatures();
+                updateTrimLevels('YUKON');
             } else if ($(this).is(':checked')) {
-                console.log('Non-TERRAIN GMC model selected, resetting terrain');
+                console.log('Non-TERRAIN/YUKON GMC model selected, resetting terrain and yukon');
                 terrainPopulated = false;
+                yukonPopulated = false;
             }
         });
 
@@ -2705,7 +3413,17 @@ function initFormBindings() {
                             } else {
                                 console.log('TERRAIN radio button not checked or not found');
                             }
-                        } else if (model !== 'TERRAIN') {
+                        } else if (model === 'YUKON') {
+                            // Check if YUKON radio button is selected
+                            var yukonRadio = $('#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"][value="YUKON"]');
+                            if (yukonRadio.length && yukonRadio.is(':checked')) {
+                                console.log('YUKON radio button is checked, populating features');
+                                populateYukonFeatures();
+                                updateTrimLevels(model);
+                            } else {
+                                console.log('YUKON radio button not checked or not found');
+                            }
+                        } else if (model !== 'TERRAIN' && model !== 'YUKON') {
                             updateTrimLevels(model);
                         }
                     });
@@ -2734,7 +3452,17 @@ function initFormBindings() {
                             } else {
                                 console.log('TERRAIN radio button not checked or not found');
                             }
-                        } else if (model !== 'TERRAIN') {
+                        } else if (model === 'YUKON') {
+                            // Check if YUKON radio button is selected
+                            var yukonRadio = $('#field_' + formId + '_' + gmcModelFieldId + ' input[type="radio"][value="YUKON"]');
+                            if (yukonRadio.length && yukonRadio.is(':checked')) {
+                                console.log('YUKON radio button is checked, populating features');
+                                populateYukonFeatures();
+                                updateTrimLevels(model);
+                            } else {
+                                console.log('YUKON radio button not checked or not found');
+                            }
+                        } else if (model !== 'TERRAIN' && model !== 'YUKON') {
                             updateTrimLevels(model);
                         }
                     });
@@ -4722,6 +5450,7 @@ function showVehicleInfo(isKiaField) {
 
     loadFeatureDescriptions();
     loadTerrainFeatureDescriptions();
+    loadYukonFeatureDescriptions();
 initFormBindings();
 updateSelectedName();
 
