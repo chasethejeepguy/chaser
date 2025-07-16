@@ -1208,6 +1208,26 @@ jQuery(document).ready(function($) {
             return false;
         }
 
+        // Canyon-specific feature normalization before fuzzy matching
+        if (model === 'CANYON') {
+            var canyonNormalizations = {
+                'VENTILATED DRIVER AND FRONT PASSENGER SEATS': 'VENTILATED FRONT SEATS',
+                'HEATED DRIVER AND FRONT PASSENGER SEATS': 'HEATED FRONT SEATS',
+                'LEATHER APPOINTED SEATS': 'LEATHER SEATS',
+                'HEAVY DUTY 800 COLD CRANKING AMPS BATTERY': 'HEAVY DUTY BATTERY',
+                'POWER OUTSIDE MIRRORS': 'HEATED POWER OUTSIDE MIRRORS',
+                'CLOTH SEATS CORE-TEC': 'CLOTH SEATS CORETEC',
+                'WIRELESS APPLE CARPLAY WIRELESS ANDROID AUTO': 'WIRELESS APPLE CARPLAY/WIRELESS ANDROID AUTO CAPABILITY FOR COMPATIBLE PHONES'
+            };
+            
+            if (canyonNormalizations[str1.toUpperCase()]) {
+                str1 = canyonNormalizations[str1.toUpperCase()];
+            }
+            if (canyonNormalizations[str2.toUpperCase()]) {
+                str2 = canyonNormalizations[str2.toUpperCase()];
+            }
+        }
+
         str1 = str1.toLowerCase().replace(/[^a-z0-9]/g, '');
         str2 = str2.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -1225,7 +1245,8 @@ jQuery(document).ready(function($) {
             return str1 === str2;
         }
 
-        var threshold = 0.8;
+        // Use lower threshold for Canyon descriptions (0.4 vs 0.8)
+        var threshold = (model === 'CANYON') ? 0.4 : 0.8;
 
         function levenshtein(a, b) {
             var matrix = [];
