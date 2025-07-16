@@ -828,8 +828,8 @@ jQuery(document).ready(function($) {
     // Load GMC Terrain feature descriptions from CSV
     var terrainFeatureDescriptions = {};
     function loadTerrainFeatureDescriptions() {
-        var csvUrl = 'https://www.hutchinsonautoteam.com/gmcmodels/gmcterraindescriptions.csv';
-        console.log('Loading GMC Terrain descriptions from:', csvUrl);
+        var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcterraindescriptions.csv';
+        console.log('🔥 TERRAIN DESCRIPTIONS - Loading GMC Terrain descriptions from:', csvUrl);
         fetchCsvWithRetry(csvUrl, 'GMC Terrain Feature Descriptions', 3, 1000).then(function(csvText) {
             console.log('GMC Terrain descriptions CSV fetched successfully, length:', csvText.length);
             console.log('First 500 characters of CSV:', csvText.substring(0, 500));
@@ -888,7 +888,7 @@ jQuery(document).ready(function($) {
     var acadiaFeatureDescriptions = {};
     function loadAcadiaFeatureDescriptions() {
         var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcacadiadescriptions.csv';
-        console.log('Loading GMC Acadia descriptions from:', csvUrl);
+        console.log('🔥 ACADIA DESCRIPTIONS - Loading GMC Acadia descriptions from:', csvUrl);
         fetchCsvWithRetry(csvUrl, 'GMC Acadia Feature Descriptions', 3, 1000).then(function(csvText) {
             console.log('GMC Acadia descriptions CSV fetched successfully, length:', csvText.length);
             console.log('First 500 characters of CSV:', csvText.substring(0, 500));
@@ -947,7 +947,7 @@ jQuery(document).ready(function($) {
     var yukonFeatureDescriptions = {};
     function loadYukonFeatureDescriptions() {
         var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcyukondescriptions.csv';
-        console.log('Loading GMC Yukon descriptions from:', csvUrl);
+        console.log('🔥 YUKON DESCRIPTIONS - Loading GMC Yukon descriptions from:', csvUrl);
         fetchCsvWithRetry(csvUrl, 'GMC Yukon Feature Descriptions', 3, 1000).then(function(csvText) {
             console.log('GMC Yukon descriptions CSV fetched successfully, length:', csvText.length);
             console.log('First 500 characters of CSV:', csvText.substring(0, 500));
@@ -1405,6 +1405,7 @@ var acadiaPopulated = false;
 
 function populateAcadiaFeatures() {
     console.log('=== populateAcadiaFeatures called ===');
+    console.log('🔥 ACADIA FUNCTION CALLED - THIS IS THE ENTRY POINT');
     console.log('Current acadiaPopulated flag:', acadiaPopulated);
     console.log('Form ID:', formId);
     console.log('acadiaHtmlBlockFieldId:', acadiaHtmlBlockFieldId);
@@ -3921,6 +3922,9 @@ function initFormBindings() {
                              console.log('🚗 ACADIA selected via delegated radio button - calling populateAcadiaFeatures');
                              console.log('Current time:', new Date().toISOString());
                              console.log('acadiaPopulated before call:', acadiaPopulated);
+                             console.log('🔍 DEBUG: ACADIA value match:', $(this).val() === 'ACADIA');
+                             console.log('🔍 DEBUG: ACADIA is checked:', $(this).is(':checked'));
+                             console.log('🔍 DEBUG: Radio button value:', $(this).val());
                              populateAcadiaFeatures();
                              console.log('acadiaPopulated after call:', acadiaPopulated);
                              updateTrimLevels('ACADIA');
@@ -6339,6 +6343,18 @@ $(document).on('change', 'input[type="radio"]', function() {
         console.log('🚨 TERRAIN DETECTED IN GLOBAL LISTENER - FORCING POPULATE');
         terrainPopulated = false;
         populateTerrainFeatures();
+    }
+    
+    if ($(this).val() === 'ACADIA' && $(this).is(':checked')) {
+        console.log('🚨 ACADIA DETECTED IN GLOBAL LISTENER - FORCING POPULATE');
+        acadiaPopulated = false;
+        populateAcadiaFeatures();
+    }
+    
+    if ($(this).val() === 'YUKON' && $(this).is(':checked')) {
+        console.log('🚨 YUKON DETECTED IN GLOBAL LISTENER - FORCING POPULATE');
+        yukonPopulated = false;
+        populateYukonFeatures();
     }
 });
 
