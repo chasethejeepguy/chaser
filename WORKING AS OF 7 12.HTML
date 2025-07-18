@@ -1920,6 +1920,12 @@ function populateSierra1500Features() {
                 var currentHtml = htmlBlock.html();
                 console.log('Current HTML content:', currentHtml);
                 
+                // Check if features are already populated to prevent duplication
+                if (htmlBlock.find('.gchoice_sierra1500_0').length > 0) {
+                    console.log('Sierra 1500 features already exist in HTML block, clearing first');
+                    htmlBlock.find('.feature-groups').remove();
+                }
+                
                 if (currentHtml.indexOf('{sierra 1500 feature checkboxes}') !== -1) {
                     var newHtml = currentHtml.replace('{sierra 1500 feature checkboxes}', html);
                     htmlBlock.html(newHtml);
@@ -1933,8 +1939,8 @@ function populateSierra1500Features() {
                         htmlBlock.html(newHtml);
                         console.log('Replaced {SIERRA 1500 FEATURE CHECKBOXES} with generated HTML');
                     } else {
-                        console.warn('No sierra 1500 placeholder found, appending HTML');
-                        htmlBlock.append(html);
+                        console.warn('No sierra 1500 placeholder found, replacing entire HTML block content');
+                        htmlBlock.html(html);
                     }
                 }
 
@@ -3753,6 +3759,144 @@ function populateCanyonFeatures() {
 		}
 	}
 
+	function processSierra1500TrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
+		console.log('Processing SIERRA 1500 trim levels for selected features:', selectedFeatures);
+		
+		var trimLevels = ['PRO', 'SLE', 'ELEVATION', 'SLT', 'AT4', 'DENALI', 'AT4X', 'DENALI ULTIMATE'];
+		var matchingTrimLevels = [];
+		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+		var featureToColumnMap = {};
+		var featureToCategoryMap = {};
+		var trimLevelRowsByCategory = {};
+		var currentCategory = null;
+		
+		// Parse the CSV data to map features to columns and find trim level rows
+		csvData.forEach(function(row, rowIndex) {
+			if (row && row.length > 0) {
+				var firstCell = row[0];
+				
+				// Check if this is a category header
+				if (firstCell && firstCell.includes('TRIM LEVELS FOR {')) {
+					currentCategory = categories.find(function(cat) {
+						return firstCell.includes(cat);
+					});
+					
+					if (currentCategory) {
+						console.log('Found Sierra 1500 category:', currentCategory);
+						
+						// Map features to their column indices for this category
+						for (var i = 1; i < row.length; i++) {
+							var feature = row[i];
+							if (feature && feature.trim() !== '') {
+								var featureKey = feature.trim();
+								featureToColumnMap[featureKey] = i;
+								featureToCategoryMap[featureKey] = currentCategory;
+								console.log('Mapped Sierra 1500 feature:', featureKey, 'to column:', i, 'category:', currentCategory);
+							}
+						}
+						
+						// Initialize trim level rows for this category
+						trimLevelRowsByCategory[currentCategory] = {};
+					}
+				}
+				// Check if this is a trim level row
+				else if (firstCell && trimLevels.includes(firstCell.replace(/"/g, ''))) {
+					var trimLevel = firstCell.replace(/"/g, '');
+					if (currentCategory) {
+						trimLevelRowsByCategory[currentCategory][trimLevel] = row;
+						console.log('Found Sierra 1500 trim level row for', trimLevel, 'in category', currentCategory);
+					}
+				}
+			}
+		});
+		
+		console.log('Sierra 1500 feature to column mapping:', featureToColumnMap);
+		console.log('Sierra 1500 trim level rows by category:', trimLevelRowsByCategory);
+		
+		// Check each trim level against selected features
+		trimLevels.forEach(function(trimLevel) {
+			var matchesAll = true;
+			var missingFeatures = [];
+			
+			selectedFeatures.forEach(function(selectedFeature) {
+				var found = false;
+				
+				// Get the actual feature name from the mapping
+				var actualFeatureName = null;
+				if (window.sierra1500FeatureMap && window.sierra1500FeatureMap[selectedFeature]) {
+					actualFeatureName = window.sierra1500FeatureMap[selectedFeature];
+				} else {
+					actualFeatureName = selectedFeature;
+				}
+				
+				console.log('Checking Sierra 1500 feature:', actualFeatureName, 'for trim level:', trimLevel);
+				
+				// Check if this feature exists in our mapping
+				if (featureToColumnMap[actualFeatureName]) {
+					var columnIndex = featureToColumnMap[actualFeatureName];
+					var category = featureToCategoryMap[actualFeatureName];
+					
+					// Check if this trim level has this feature in this category
+					if (trimLevelRowsByCategory[category] && trimLevelRowsByCategory[category][trimLevel]) {
+						var trimRow = trimLevelRowsByCategory[category][trimLevel];
+						if (trimRow[columnIndex] && (trimRow[columnIndex].toUpperCase() === 'YES' || trimRow[columnIndex].toUpperCase() === 'Y')) {
+							found = true;
+							console.log('✅ Sierra 1500 feature', actualFeatureName, 'found in', trimLevel, 'at column', columnIndex);
+						} else {
+							console.log('❌ Sierra 1500 feature', actualFeatureName, 'not found in', trimLevel, 'at column', columnIndex, 'value:', trimRow[columnIndex]);
+						}
+					}
+				} else {
+					console.log('⚠️ Sierra 1500 feature', actualFeatureName, 'not found in feature mapping');
+				}
+				
+				if (!found) {
+					matchesAll = false;
+					missingFeatures.push(actualFeatureName);
+				}
+			});
+			
+			if (matchesAll) {
+				matchingTrimLevels.push(trimLevel);
+				console.log('✅ Sierra 1500 trim level', trimLevel, 'matches all selected features');
+			} else {
+				console.log('❌ Sierra 1500 trim level', trimLevel, 'does not match all selected features, missing:', missingFeatures);
+			}
+		});
+		
+		console.log('Matching trim levels for Sierra 1500:', matchingTrimLevels);
+		
+		// Display results
+		if (trimLevelsButtonBlock && trimLevelsButtonBlock.length) {
+			var buttonText = matchingTrimLevels.length > 0 ? 
+				'View Available Trim Levels (' + matchingTrimLevels.length + ')' : 
+				'No Matching Trim Levels';
+			
+			trimLevelsButtonBlock.html('<button type="button" id="viewTrimLevelsButton" class="button">' + buttonText + '</button>');
+			
+			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
+				e.preventDefault();
+				if (matchingTrimLevels.length > 0) {
+					console.log('Showing Sierra 1500 trim levels popup');
+					// Show trim levels popup (this would need to be implemented)
+				} else {
+					alert('No matching Sierra 1500 trim levels found for the selected features.');
+				}
+			});
+		}
+		
+		// Update the text in field 69
+		if (htmlBlock && htmlBlock.length) {
+			var trimLevelsText = matchingTrimLevels.length > 0 ? matchingTrimLevels.join(', ') : 'No matching trim levels found';
+			var message = 'Wonderful, it sounds like the ' + trimLevelsText + ' would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
+			
+			htmlBlock.find('p').text(message);
+			console.log('✅ HTML block (ID: 69) updated for Sierra 1500 with:', message);
+		} else {
+			console.warn('❌ HTML block (ID: 69) not found for Sierra 1500');
+		}
+	}
+
 	function updateTrimLevels(model) {
     var config = modelConfigs[model];
     if (!config) {
@@ -4401,6 +4545,24 @@ function populateCanyonFeatures() {
                     console.log(model + ' CSV parsed, rows: ' + results.data.length);
                     console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
                     processCanyonTrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
+                }
+            });
+            return;
+        }
+        
+        // Special handling for SIERRA 1500 model
+        if (model === 'SIERRA 1500') {
+            // Log the full CSV content to debug data issues
+            console.log('=== FULL SIERRA 1500 CSV CONTENT ===');
+            console.log(csvText);
+            console.log('=== END SIERRA 1500 CSV CONTENT ===');
+            
+            Papa.parse(csvText, {
+                skipEmptyLines: true,
+                complete: function(results) {
+                    console.log(model + ' CSV parsed, rows: ' + results.data.length);
+                    console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
+                    processSierra1500TrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
                 }
             });
             return;
