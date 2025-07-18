@@ -622,6 +622,7 @@ jQuery(document).ready(function($) {
     var gmcModelFieldId = 107;
     var terrainCheckboxFieldId = 129;
     var terrainHtmlBlockFieldId = 137;
+    var sierra1500CheckboxFieldId = 141;
 
     // Global variables
     var vehicleData = null;
@@ -633,6 +634,7 @@ jQuery(document).ready(function($) {
     var featureDescriptions = {};
     var trimLevelsData = {};
     var terrainPopulated = false;
+    var sierra1500Populated = false;
 
     // Model to field ID, CSV URL, and model filter mappings
     var modelConfigs = {
@@ -651,7 +653,8 @@ jQuery(document).ready(function($) {
         'SPORTAGE': { fieldId: sportageCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/kiamodels/SPORTAGE.csv', modelFilter: 'Sportage' },
         'SPORTAGE-HYBRID': { fieldId: sportageHybridCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/kiamodels/SPORTAGE-HYBRID.csv', modelFilter: 'Sportage Hybrid' },
         'TELLURIDE': { fieldId: tellurideCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/kiamodels/TELLURIDE.csv', modelFilter: 'Telluride' },
-        'TERRAIN': { fieldId: terrainCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/terrain.csv', modelFilter: 'Terrain', isGmc: true }
+        'TERRAIN': { fieldId: terrainCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/terrain.csv', modelFilter: 'Terrain', isGmc: true },
+        'SIERRA 1500': { fieldId: sierra1500CheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/sierra1500.csv', modelFilter: 'Sierra 1500', isGmc: true }
     };
 
     // Email mappings
@@ -863,6 +866,53 @@ jQuery(document).ready(function($) {
         }).catch(function(error) {
             console.error('Fetch error for GMC Terrain Feature Descriptions:', error.message);
             terrainFeatureDescriptions = {};
+        });
+    }
+
+    // Load GMC Sierra 1500 feature descriptions from CSV
+    var sierra1500FeatureDescriptions = {};
+    function loadSierra1500FeatureDescriptions() {
+        var csvUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcsierra1500descriptions.csv';
+        console.log('Loading GMC Sierra 1500 descriptions from:', csvUrl);
+        fetchCsvWithRetry(csvUrl, 'GMC Sierra 1500 Feature Descriptions', 3, 1000).then(function(csvText) {
+            console.log('GMC Sierra 1500 descriptions CSV fetched successfully, length:', csvText.length);
+            console.log('First 500 characters of CSV:', csvText.substring(0, 500));
+            
+            // Parse the CSV - handle complex format with curly braces
+            sierra1500FeatureDescriptions = {};
+            
+            // Split by lines and process each line
+            var lines = csvText.split('\n').filter(function(line) { return line.trim(); });
+            
+            lines.forEach(function(line, index) {
+                try {
+                    // Each line should be in format: {FEATURE NAME:DESCRIPTION}
+                    var match = line.match(/^\{([^:]+):(.+)\}$/);
+                    if (match) {
+                        var feature = match[1].trim();
+                        var description = match[2].trim();
+                        
+                        // Store with case-insensitive key for matching
+                        sierra1500FeatureDescriptions[feature.toUpperCase()] = description;
+                        console.log('Loaded GMC Sierra 1500 description for:', feature);
+                    } else {
+                        console.warn('Could not parse Sierra 1500 description line:', line.substring(0, 100));
+                    }
+                } catch (error) {
+                    console.error('Error parsing Sierra 1500 description line:', error, line.substring(0, 100));
+                }
+            });
+            
+            console.log('GMC Sierra 1500 Feature Descriptions loaded, features:', Object.keys(sierra1500FeatureDescriptions).length);
+            console.log('Sample features loaded:', Object.keys(sierra1500FeatureDescriptions).slice(0, 5));
+            if (Object.keys(sierra1500FeatureDescriptions).length === 0) {
+                console.warn('No GMC Sierra 1500 descriptions were parsed from CSV');
+            } else {
+                console.log('SUCCESS: GMC Sierra 1500 descriptions loaded successfully!');
+            }
+        }).catch(function(error) {
+            console.error('Fetch error for GMC Sierra 1500 Feature Descriptions:', error.message);
+            sierra1500FeatureDescriptions = {};
         });
     }
 
@@ -1275,6 +1325,205 @@ jQuery(document).ready(function($) {
     });
 }
 
+	function populateSierra1500Features() {
+    console.log('=== populateSierra1500Features called ===');
+    console.log('Current sierra1500Populated flag:', sierra1500Populated);
+    console.log('Form ID:', formId);
+    console.log('sierra1500CheckboxFieldId:', sierra1500CheckboxFieldId);
+    
+    if (sierra1500Populated) {
+        console.log('Sierra 1500 features already populated, skipping');
+        return;
+    }
+
+    var config = modelConfigs['SIERRA 1500'];
+    if (!config) {
+        console.warn('Sierra 1500 configuration not found');
+        console.log('Available modelConfigs:', Object.keys(modelConfigs));
+        return;
+    }
+    console.log('Sierra 1500 config found:', config);
+
+    // Try multiple selectors to find the HTML block field
+    console.log('Searching for Sierra 1500 HTML block field with multiple selectors...');
+    var htmlBlock = $('#field_' + formId + '_' + sierra1500CheckboxFieldId);
+    console.log('Selector 1 (#field_' + formId + '_' + sierra1500CheckboxFieldId + '):', htmlBlock.length);
+    
+    if (!htmlBlock.length) {
+        htmlBlock = $('#field_' + formId + '_141');
+        console.log('Selector 2 (#field_' + formId + '_141):', htmlBlock.length);
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('#input_' + formId + '_141');
+        console.log('Selector 3 (#input_' + formId + '_141):', htmlBlock.length);
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('[id*="141"]').filter(function() {
+            return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+        });
+        console.log('Selector 4 (wildcard [id*="141"]):', htmlBlock.length);
+    }
+    
+    console.log('HTML Block field (ID: 141) debug:', {
+        selector: '#field_' + formId + '_' + sierra1500CheckboxFieldId,
+        exists: htmlBlock.length > 0,
+        visible: htmlBlock.length ? htmlBlock.is(':visible') : false,
+        content: htmlBlock.length ? htmlBlock.html().substring(0, 200) : 'N/A',
+        actualId: htmlBlock.length ? htmlBlock.attr('id') : 'N/A'
+    });
+    
+    if (!htmlBlock.length) {
+        console.warn('Sierra 1500 HTML block field (ID: 141) not found with any selector');
+        return;
+    }
+
+    console.log('Fetching Sierra 1500 CSV from:', config.csvUrl);
+    fetchCsvWithRetry(config.csvUrl, 'Sierra 1500', 3, 1000).then(function(csvText) {
+        console.log('Sierra 1500 CSV fetched successfully, length:', csvText.length);
+        console.log('CSV preview (first 500 chars):', csvText.substring(0, 500));
+        
+        Papa.parse(csvText, {
+            skipEmptyLines: true,
+            complete: function(results) {
+                console.log('Sierra 1500 CSV parsed for population, rows: ' + results.data.length);
+                console.log('First few rows:', results.data.slice(0, 3));
+                
+                var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+                var featureGroups = {};
+                var currentCategory = null;
+                var features = [];
+
+                results.data.forEach(function(row, rowIndex) {
+                    if (row.length > 0) {
+                        var firstCell = row[0] ? row[0].trim() : '';
+                        if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+                            if (currentCategory && features.length > 0) {
+                                featureGroups[currentCategory] = features;
+                                console.log('Stored category: ' + currentCategory + ' with ' + features.length + ' features');
+                            }
+                            currentCategory = firstCell.match(/\{(.+)\}/)[1];
+                            features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                var cleaned = f.trim();
+                                if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                    cleaned = cleaned.slice(1, -1);
+                                }
+                                cleaned = cleaned.replace(/""/g, '"');
+                                return cleaned;
+                            });
+                            console.log('Row ' + rowIndex + ': Parsed category: ' + currentCategory + ', features: ' + features.length);
+                        }
+                    }
+                });
+                if (currentCategory && features.length > 0) {
+                    featureGroups[currentCategory] = features;
+                    console.log('Final stored category: ' + currentCategory + ' with ' + features.length + ' features');
+                }
+
+                console.log('Feature groups summary:', Object.keys(featureGroups).map(function(cat) {
+                    return cat + ': ' + featureGroups[cat].length + ' features';
+                }));
+
+                if (Object.keys(featureGroups).length !== 5) {
+                    console.error('Expected 5 categories, found: ' + Object.keys(featureGroups).length);
+                    console.error('Found categories:', Object.keys(featureGroups));
+                    return;
+                }
+
+                console.log('Building HTML for Sierra 1500 features...');
+                var html = '<div class="feature-groups">';
+                var globalIndex = 0;
+                categories.forEach(function(category) {
+                    var catFeatures = featureGroups[category] || [];
+                    console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
+                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
+                    catFeatures.forEach(function(feature, index) {
+                        var uniqueId = 'choice_3_sierra1500_' + globalIndex;
+                        var inputName = 'input_sierra1500_' + globalIndex;
+                        var simpleValue = 'sierra1500_feature_' + globalIndex;
+                        
+                        if (!window.sierra1500FeatureMap) {
+                            window.sierra1500FeatureMap = {};
+                        }
+                        window.sierra1500FeatureMap[simpleValue] = feature;
+                        
+                        var divStart = '<div class="gchoice gchoice_sierra1500_' + globalIndex + '">';
+                        var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
+                        var labelTag = '<label for="' + uniqueId + '" id="label_sierra1500_' + globalIndex + '">' + feature + '</label>';
+                        var infoIcon = '<span class="feature-info-icon sierra1500-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Sierra 1500 feature description">ℹ</span>';
+                        var divEnd = '</div>';
+                        
+                        html += divStart + inputTag + labelTag + infoIcon + divEnd;
+                        globalIndex++;
+                    });
+                    html += '</div></div>';
+                });
+                html += '</div>';
+                
+                console.log('Generated HTML length:', html.length);
+                console.log('Total checkboxes to create:', globalIndex);
+
+                var htmlContent = htmlBlock.html();
+                console.log('Looking for placeholder: {sierra 1500 feature checkboxes}');
+                console.log('Placeholder found:', htmlContent.indexOf('{sierra 1500 feature checkboxes}') !== -1);
+                
+                if (htmlContent.indexOf('{sierra 1500 feature checkboxes}') !== -1) {
+                    htmlContent = htmlContent.replace('{sierra 1500 feature checkboxes}', html);
+                    htmlBlock.html(htmlContent);
+                    console.log('✅ Replaced {sierra 1500 feature checkboxes} placeholder in field 141');
+                } else {
+                    var targetContainer = htmlBlock.find('.ginput_container, .gfield_html_formatted').first();
+                    if (targetContainer.length) {
+                        console.log('Found container, replacing its content');
+                        targetContainer.html(html);
+                        console.log('✅ Replaced content in container within field 141');
+                    } else {
+                        console.log('No container found, replacing entire HTML block content');
+                        htmlBlock.html(html);
+                        console.log('✅ Replaced entire content of field 141');
+                    }
+                }
+                
+                var createdCheckboxes = htmlBlock.find('input[type="checkbox"]');
+                console.log('✅ Checkboxes found in HTML block:', createdCheckboxes.length);
+                
+                sierra1500Populated = true;
+                console.log('Sierra 1500 features populated into 5 columns in field 141');
+
+                htmlBlock.find('input[type="checkbox"]').off('change.SIERRA1500Features').on('change.SIERRA1500Features', function() {
+                    console.log('SIERRA 1500 checkbox changed, updating trim levels');
+                    updateTrimLevels('SIERRA 1500');
+                });
+
+                htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var feature = $(this).data('feature');
+                    console.log('=== SIERRA 1500 FEATURE INFO ICON CLICKED ===');
+                    console.log('Feature clicked:', feature);
+                    console.log('Available Sierra 1500 descriptions:', Object.keys(sierra1500FeatureDescriptions));
+                    
+                    if (!feature || typeof feature !== 'string') {
+                        console.error('Invalid feature:', feature);
+                        showFeatureDescription('Unknown Feature', 'Feature information not available');
+                        return;
+                    }
+                    
+                    console.log('Looking for feature (uppercase):', feature.toUpperCase());
+                    var description = sierra1500FeatureDescriptions[feature.toUpperCase()] || 'No GMC Sierra 1500 description available for ' + feature;
+                    console.log('Found description:', description);
+                    console.log('=== END SIERRA 1500 FEATURE INFO DEBUG ===');
+                    showFeatureDescription(feature, description);
+                });
+            },
+            error: function(error) {
+                console.error('Papa Parse error for Sierra 1500 population: ' + error);
+            }
+        });
+    }).catch(function(error) {
+        console.error('Fetch error for Sierra 1500 population: ' + error.message);
+    });
+}
+
 	function processTerrainTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
 		console.log('Processing TERRAIN trim levels for selected features:', selectedFeatures);
 		
@@ -1546,11 +1795,269 @@ jQuery(document).ready(function($) {
 			});
 		}
 		
+				// Store the results
+		trimLevelsData[model] = matchingTrimLevels;
+	}
+
+	function processSierra1500TrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
+		console.log('Processing SIERRA 1500 trim levels for selected features:', selectedFeatures);
+		
+		var trimLevels = ['PRO', 'SLE', 'ELEVATION', 'SLT', 'AT4', 'DENALI', 'AT4X', 'DENALI ULTIMATE'];
+		var matchingTrimLevels = [];
+		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+		var featureToColumnMap = {};
+		var featureToCategoryMap = {};
+		var trimLevelRows = {};
+		var trimLevelRowsByCategory = {};
+		var currentCategory = null;
+		
+		// Parse the CSV data to map features to columns and find trim level rows
+		csvData.forEach(function(row, rowIndex) {
+			if (row.length > 0) {
+				var firstCell = row[0] ? row[0].trim() : '';
+				
+				// Check if this is a category header row
+				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+					var category = firstCell.match(/\{(.+)\}/)[1];
+					currentCategory = category;
+					console.log('Found category:', category);
+					
+					// Initialize category storage if not exists
+					if (!trimLevelRowsByCategory[category]) {
+						trimLevelRowsByCategory[category] = {};
+					}
+					
+					// Map features to their column indices
+					for (var i = 1; i < row.length; i++) {
+						var feature = row[i] ? row[i].trim() : '';
+						if (feature && feature !== '') {
+							// Clean up the feature name the same way as in populateSierra1500Features
+							var cleanedFeature = feature;
+							if (cleanedFeature.startsWith('"') && cleanedFeature.endsWith('"')) {
+								cleanedFeature = cleanedFeature.slice(1, -1);
+							}
+							cleanedFeature = cleanedFeature.replace(/""/g, '"');
+							
+							featureToColumnMap[cleanedFeature] = i;
+							featureToCategoryMap[cleanedFeature] = category;
+							console.log('Mapped feature "' + cleanedFeature + '" (raw: "' + feature + '") to column ' + i + ' in category ' + category);
+						}
+					}
+				}
+				// Check if this is a trim level row
+				else if (trimLevels.includes(firstCell.replace(/"/g, '')) && currentCategory) {
+					var trimLevel = firstCell.replace(/"/g, '');
+					// Store in both global and category-specific storage
+					trimLevelRows[trimLevel] = row;
+					trimLevelRowsByCategory[currentCategory][trimLevel] = row;
+					console.log('Found trim level row for:', trimLevel, 'in category:', currentCategory);
+				}
+			}
+		});
+		
+		console.log('Feature to column mapping:', featureToColumnMap);
+		console.log('Feature to category mapping:', featureToCategoryMap);
+		console.log('Trim level rows:', Object.keys(trimLevelRows));
+		console.log('Trim level rows by category:', trimLevelRowsByCategory);
+		
+		// Check which trim levels have all selected features
+		trimLevels.forEach(function(trimLevel) {
+			if (trimLevelRows[trimLevel]) {
+				var hasAllFeatures = true;
+				var featureResults = [];
+				
+				selectedFeatures.forEach(function(feature) {
+					var columnIndex = featureToColumnMap[feature];
+					var matchedFeature = feature;
+					
+					// If exact match not found, try fuzzy matching
+					if (columnIndex === undefined) {
+						console.log('Feature "' + feature + '" not found in column mapping, trying fuzzy matching...');
+						var bestMatch = null;
+						var bestScore = 0;
+						var threshold = 0.3;
+						
+						Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+							var score = 0;
+							
+							if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+								score = 0.8;
+							} else if (csvFeature.toLowerCase().startsWith(feature.toLowerCase())) {
+								score = 0.7;
+							} else if (feature.length >= 3 && csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+								score = 0.6;
+							} else {
+								var featureNorm = feature.toLowerCase().replace(/[^a-z0-9]/g, '');
+								var csvFeatureNorm = csvFeature.toLowerCase().replace(/[^a-z0-9]/g, '');
+								if (featureNorm.length > 0 && csvFeatureNorm.length > 0) {
+									var commonLength = 0;
+									var maxLength = Math.max(featureNorm.length, csvFeatureNorm.length);
+									for (var i = 0; i < Math.min(featureNorm.length, csvFeatureNorm.length); i++) {
+										if (featureNorm[i] === csvFeatureNorm[i]) {
+											commonLength++;
+										} else {
+											break;
+										}
+									}
+									score = commonLength / maxLength;
+								}
+							}
+							
+							console.log('Fuzzy match attempt: "' + feature + '" vs "' + csvFeature + '": score=' + score);
+							
+							if (score > bestScore && score >= threshold) {
+								bestScore = score;
+								bestMatch = csvFeature;
+							}
+						});
+						
+						if (bestMatch) {
+							console.log('Found fuzzy match for "' + feature + '": "' + bestMatch + '" (score: ' + bestScore + ')');
+							columnIndex = featureToColumnMap[bestMatch];
+							matchedFeature = bestMatch;
+						}
+					}
+					
+					if (columnIndex !== undefined) {
+						// Get the category for this feature
+						var featureCategory = featureToCategoryMap[matchedFeature];
+						var value = null;
+						
+						// Use category-specific trim level data if available
+						if (featureCategory && trimLevelRowsByCategory[featureCategory] && trimLevelRowsByCategory[featureCategory][trimLevel]) {
+							value = trimLevelRowsByCategory[featureCategory][trimLevel][columnIndex];
+							console.log('Using category-specific data for ' + trimLevel + ' in category ' + featureCategory + ', column ' + columnIndex + ': "' + value + '"');
+						} else {
+							// Fallback to global trim level data
+							value = trimLevelRows[trimLevel][columnIndex];
+							console.log('Using global data for ' + trimLevel + ', column ' + columnIndex + ': "' + value + '"');
+						}
+						
+						// Clean up the value and check for YES
+						var cleanedValue = value ? value.trim().toLowerCase() : '';
+						var hasFeature = false;
+						
+						if (cleanedValue === 'yes') {
+							hasFeature = true;
+						} else if (cleanedValue === 'no') {
+							hasFeature = false;
+						} else if (cleanedValue.startsWith('y') && cleanedValue.length <= 4) {
+							// Handle cases like "YE" which should be "YES"
+							hasFeature = true;
+							console.log('Found partial "YES" value "' + value + '" for feature "' + matchedFeature + '" in trim level "' + trimLevel + '", treating as YES');
+						} else {
+							// Default to false for any other value
+							hasFeature = false;
+							if (cleanedValue !== '') {
+								console.warn('Unknown value "' + value + '" for feature "' + matchedFeature + '" in trim level "' + trimLevel + '", treating as NO');
+							}
+						}
+						
+						featureResults.push({
+							feature: feature,
+							matchedFeature: matchedFeature,
+							value: value,
+							cleanedValue: cleanedValue,
+							hasFeature: hasFeature
+						});
+						
+						console.log('Feature check for ' + trimLevel + ': "' + feature + '" -> "' + matchedFeature + '" = "' + value + '" (' + cleanedValue + ') -> ' + hasFeature);
+						
+						if (!hasFeature) {
+							hasAllFeatures = false;
+						}
+					} else {
+						console.log('Feature "' + feature + '" not found in column mapping even with fuzzy matching');
+						hasAllFeatures = false;
+					}
+				});
+				
+				console.log('Trim level ' + trimLevel + ' feature check:', featureResults);
+				console.log('Has all features:', hasAllFeatures);
+				
+				if (hasAllFeatures) {
+					matchingTrimLevels.push(trimLevel);
+				}
+			}
+		});
+		
+		console.log('Matching trim levels for ' + model + ':', matchingTrimLevels);
+		
+		// Update the HTML block with results
+		var resultText = '';
+		if (matchingTrimLevels.length > 0) {
+			resultText = 'Available trim levels with your selected features: ' + matchingTrimLevels.join(', ');
+		} else {
+			resultText = 'No trim levels have all your selected features. Please adjust your selections.';
+		}
+		
+		if (htmlBlock.length) {
+			htmlBlock.find('p').text(resultText);
+		}
+		
+		// Update the trim levels button
+		if (trimLevelsButtonBlock.length) {
+			var buttonText = matchingTrimLevels.length > 0 ? 
+				'View Available Trim Levels (' + matchingTrimLevels.length + ')' : 
+				'No Matching Trim Levels';
+			
+			trimLevelsButtonBlock.html('<button type="button" id="viewTrimLevelsButton" class="button">' + buttonText + '</button>');
+			
+			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
+				e.preventDefault();
+				if (matchingTrimLevels.length > 0) {
+					var detailsHtml = '<h2>Available Trim Levels for ' + model + '</h2>';
+					detailsHtml += '<p>Based on your selected features, the following trim levels are available:</p>';
+					detailsHtml += '<ul>';
+					matchingTrimLevels.forEach(function(trimLevel) {
+						detailsHtml += '<li><strong>' + trimLevel + '</strong></li>';
+					});
+					detailsHtml += '</ul>';
+					detailsHtml += '<p>Selected features: ' + selectedFeatures.join(', ') + '</p>';
+					
+					// Show matched features for debugging
+					if (matchingTrimLevels.length > 0) {
+						detailsHtml += '<h3>Feature Matching Details:</h3>';
+						matchingTrimLevels.forEach(function(trimLevel) {
+							if (trimLevelRows[trimLevel]) {
+								detailsHtml += '<h4>' + trimLevel + '</h4><ul>';
+								selectedFeatures.forEach(function(feature) {
+									var columnIndex = featureToColumnMap[feature];
+									var matchedFeature = feature;
+									
+									// Try fuzzy matching if exact match not found
+									if (columnIndex === undefined) {
+										Object.keys(featureToColumnMap).forEach(function(csvFeature) {
+											if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
+												columnIndex = featureToColumnMap[csvFeature];
+												matchedFeature = csvFeature;
+											}
+										});
+									}
+									
+									if (columnIndex !== undefined) {
+										var value = trimLevelRows[trimLevel][columnIndex];
+										detailsHtml += '<li>' + feature + (matchedFeature !== feature ? ' (matched: ' + matchedFeature + ')' : '') + ': ' + value + '</li>';
+									}
+								});
+								detailsHtml += '</ul>';
+							}
+						});
+					}
+					
+					// Call the proper showTrimLevelsPopup function like other models
+					showTrimLevelsPopup(model, matchingTrimLevels, model);
+				} else {
+					alert('No trim levels match your selected features. Please adjust your selections.');
+				}
+			});
+		}
+		
 		// Store the results
 		trimLevelsData[model] = matchingTrimLevels;
 	}
 
-	function updateTrimLevels(model) {
+    function updateTrimLevels(model) {
     var config = modelConfigs[model];
     if (!config) {
         console.warn('Model configuration not found for: ' + model);
@@ -1574,6 +2081,29 @@ jQuery(document).ready(function($) {
             terrainHtmlBlockFieldId: terrainHtmlBlockFieldId,
             selector1: '#field_' + formId + '_' + terrainHtmlBlockFieldId,
             selector2: '#field_' + formId + '_137',
+            found: checkboxField.length,
+            actualId: checkboxField.attr('id'),
+            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
+        });
+        
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    } else if (model === 'SIERRA 1500') {
+        // For SIERRA 1500, checkboxes are in field 141 (HTML block)
+        checkboxField = $('#field_' + formId + '_' + sierra1500CheckboxFieldId);
+        if (!checkboxField.length) {
+            checkboxField = $('#field_' + formId + '_141');
+        }
+        if (!checkboxField.length) {
+            checkboxField = $('[id*="141"]').filter(function() {
+                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+            });
+        }
+        
+        console.log('SIERRA 1500 checkboxField debug:', {
+            sierra1500CheckboxFieldId: sierra1500CheckboxFieldId,
+            selector1: '#field_' + formId + '_' + sierra1500CheckboxFieldId,
+            selector2: '#field_' + formId + '_141',
             found: checkboxField.length,
             actualId: checkboxField.attr('id'),
             hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
@@ -1671,14 +2201,21 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         e.stopPropagation();
         var feature = $(this).data('feature');
-        // Use GMC Terrain descriptions for TERRAIN model, otherwise use KIA descriptions
+        // Use GMC Terrain descriptions for TERRAIN model, GMC Sierra 1500 descriptions for SIERRA 1500 model, otherwise use KIA descriptions
         var description;
         if (model === 'TERRAIN') {
-            console.log('TERRAIN model detected, using GMC descriptions');
+            console.log('TERRAIN model detected, using GMC Terrain descriptions');
             console.log('Feature to lookup:', feature);
             console.log('Feature uppercase:', feature.toUpperCase());
             console.log('Available terrain descriptions:', Object.keys(terrainFeatureDescriptions));
-            description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No description available for ' + feature;
+            description = terrainFeatureDescriptions[feature.toUpperCase()] || 'No GMC Terrain description available for ' + feature;
+            console.log('Found description:', description);
+        } else if (model === 'SIERRA 1500') {
+            console.log('SIERRA 1500 model detected, using GMC Sierra 1500 descriptions');
+            console.log('Feature to lookup:', feature);
+            console.log('Feature uppercase:', feature.toUpperCase());
+            console.log('Available Sierra 1500 descriptions:', Object.keys(sierra1500FeatureDescriptions));
+            description = sierra1500FeatureDescriptions[feature.toUpperCase()] || 'No GMC Sierra 1500 description available for ' + feature;
             console.log('Found description:', description);
         } else {
             description = featureDescriptions[feature] || 'No description available for ' + feature;
@@ -1764,6 +2301,20 @@ jQuery(document).ready(function($) {
                 checked: $input.is(':checked'),
                 labelText: $input.next('label').text().substring(0, 100)
             });
+        } else if (model === 'SIERRA 1500') {
+            // For SIERRA 1500, get feature from the global mapping using the checkbox value
+            var checkboxValue = $input.attr('value') || '';
+            feature = window.sierra1500FeatureMap && window.sierra1500FeatureMap[checkboxValue] ? window.sierra1500FeatureMap[checkboxValue] : '';
+            
+            console.log('SIERRA 1500 checkbox debug:', {
+                id: $input.attr('id'),
+                checkboxValue: checkboxValue,
+                mappedFeature: feature,
+                featureLength: feature.length,
+                name: $input.attr('name'),
+                checked: $input.is(':checked'),
+                labelText: $input.next('label').text().substring(0, 100)
+            });
         } else {
             // For other models, use the existing logic
             var $div = $input.closest('.gfield_checkbox > div, .gfield-choice-wrapper');
@@ -1827,6 +2378,24 @@ jQuery(document).ready(function($) {
                     console.log(model + ' CSV parsed, rows: ' + results.data.length);
                     console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
                     processTerrainTrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
+                }
+            });
+            return;
+        }
+        
+        // Special handling for SIERRA 1500 model
+        if (model === 'SIERRA 1500') {
+            // Log the full CSV content to debug data issues
+            console.log('=== FULL SIERRA 1500 CSV CONTENT ===');
+            console.log(csvText);
+            console.log('=== END SIERRA 1500 CSV CONTENT ===');
+            
+            Papa.parse(csvText, {
+                skipEmptyLines: true,
+                complete: function(results) {
+                    console.log(model + ' CSV parsed, rows: ' + results.data.length);
+                    console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
+                    processSierra1500TrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
                 }
             });
             return;
@@ -2478,6 +3047,13 @@ function initFormBindings() {
                                     populateTerrainFeatures();
                                     console.log('terrainPopulated after call:', terrainPopulated);
                                     updateTrimLevels('TERRAIN');
+                                } else if (input.val() === 'SIERRA 1500' && input.is(':checked')) {
+                                    console.log('🚗 SIERRA 1500 selected via radio button - calling populateSierra1500Features');
+                                    console.log('Current time:', new Date().toISOString());
+                                    console.log('sierra1500Populated before call:', sierra1500Populated);
+                                    populateSierra1500Features();
+                                    console.log('sierra1500Populated after call:', sierra1500Populated);
+                                    updateTrimLevels('SIERRA 1500');
                                 } else if (input.is(':checked')) {
                                     console.log('Non-TERRAIN GMC model selected: ' + input.val());
                                     terrainPopulated = false;
@@ -2530,9 +3106,17 @@ function initFormBindings() {
                              populateTerrainFeatures();
                              console.log('terrainPopulated after call:', terrainPopulated);
                              updateTrimLevels('TERRAIN');
+                         } else if ($(this).val() === 'SIERRA 1500' && $(this).is(':checked')) {
+                             console.log('🚗 SIERRA 1500 selected via delegated radio button - calling populateSierra1500Features');
+                             console.log('Current time:', new Date().toISOString());
+                             console.log('sierra1500Populated before call:', sierra1500Populated);
+                             populateSierra1500Features();
+                             console.log('sierra1500Populated after call:', sierra1500Populated);
+                             updateTrimLevels('SIERRA 1500');
                          } else if ($(this).is(':checked')) {
-                             console.log('Non-TERRAIN GMC model selected via delegated: ' + $(this).val());
+                             console.log('Non-TERRAIN/SIERRA 1500 GMC model selected via delegated: ' + $(this).val());
                              terrainPopulated = false;
+                             sierra1500Populated = false;
                          }
                      }
                 }
@@ -2680,9 +3264,14 @@ function initFormBindings() {
                 console.log('TERRAIN radio button detected, calling populateTerrainFeatures');
                 populateTerrainFeatures();
                 updateTrimLevels('TERRAIN');
+            } else if ($(this).val() === 'SIERRA 1500' && $(this).is(':checked')) {
+                console.log('SIERRA 1500 radio button detected, calling populateSierra1500Features');
+                populateSierra1500Features();
+                updateTrimLevels('SIERRA 1500');
             } else if ($(this).is(':checked')) {
-                console.log('Non-TERRAIN GMC model selected, resetting terrain');
+                console.log('Non-TERRAIN/SIERRA 1500 GMC model selected, resetting');
                 terrainPopulated = false;
+                sierra1500Populated = false;
             }
         });
 
@@ -4722,6 +5311,7 @@ function showVehicleInfo(isKiaField) {
 
     loadFeatureDescriptions();
     loadTerrainFeatureDescriptions();
+    loadSierra1500FeatureDescriptions();
 initFormBindings();
 updateSelectedName();
 
@@ -4907,6 +5497,10 @@ $(document).on('change', 'input[type="radio"]', function() {
         console.log('🚨 TERRAIN DETECTED IN GLOBAL LISTENER - FORCING POPULATE');
         terrainPopulated = false;
         populateTerrainFeatures();
+    } else if ($(this).val() === 'SIERRA 1500' && $(this).is(':checked')) {
+        console.log('🚨 SIERRA 1500 DETECTED IN GLOBAL LISTENER - FORCING POPULATE');
+        sierra1500Populated = false;
+        populateSierra1500Features();
     }
 });
 
