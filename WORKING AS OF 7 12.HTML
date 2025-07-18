@@ -5920,17 +5920,41 @@ function initFormBindings() {
                         return false;
                     }
                     
+                    // First check for exact model match (more efficient)
+                    var matchesModel = false;
+                    if (model === 'K4') {
+                        matchesModel = vehicleModel.toUpperCase() === modelFilter.toUpperCase();
+                    } else {
+                        // For GMC models, check exact match first, then fuzzy match if needed
+                        if (vehicleModel.toUpperCase() === modelFilter.toUpperCase()) {
+                            matchesModel = true;
+                        } else {
+                            // Only use fuzzy matching as fallback and only for similar models
+                            var similarity = fuzzyMatch(modelFilter, vehicleModel, model, vehicleModel);
+                            matchesModel = similarity >= 0.8; // Higher threshold for model matching
+                        }
+                    }
+                    
+                    // Only check trim levels if model matches (more efficient)
+                    if (!matchesModel) {
+                        return false;
+                    }
+                    
                     var matchesTrim = trimLevels.some(function(trim) {
                         return model === 'K4' ? trim.toUpperCase() === series.toUpperCase() : fuzzyMatch(trim, series, model, series);
                     });
-                    var matchesModel = model === 'K4' ? vehicleModel.toUpperCase() === modelFilter.toUpperCase() : fuzzyMatch(modelFilter, vehicleModel, model, vehicleModel);
-                    console.log('Vehicle check:', {
-                        series: series,
-                        vehicleModel: vehicleModel,
-                        modelFilter: modelFilter,
-                        matchesTrim: matchesTrim,
-                        matchesModel: matchesModel
-                    });
+                    
+                    // Only log for vehicles that match the model (reduce debug spam)
+                    if (matchesModel) {
+                        console.log('Vehicle check:', {
+                            series: series,
+                            vehicleModel: vehicleModel,
+                            modelFilter: modelFilter,
+                            matchesTrim: matchesTrim,
+                            matchesModel: matchesModel
+                        });
+                    }
+                    
                     return matchesTrim && matchesModel;
                 });
 
