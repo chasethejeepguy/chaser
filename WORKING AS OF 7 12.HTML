@@ -517,6 +517,39 @@ jQuery(document).ready(function($) {
             font-size: 16px;\
             margin-bottom: 10px;\
         }\
+        .feature-group-container {\
+            margin-bottom: 15px;\
+        }\
+        .feature-group-toggle {\
+            transition: all 0.3s ease;\
+            border-radius: 6px;\
+            box-shadow: 0 2px 4px rgba(0,124,186,0.1);\
+        }\
+        .feature-group-toggle:hover {\
+            background: #005a8b !important;\
+            transform: translateY(-1px);\
+            box-shadow: 0 4px 8px rgba(0,124,186,0.2);\
+        }\
+        .feature-group-toggle:active {\
+            transform: translateY(0);\
+            box-shadow: 0 2px 4px rgba(0,124,186,0.1);\
+        }\
+        .feature-group-content {\
+            margin-top: 8px;\
+            padding: 10px;\
+            background: #f8f9fa;\
+            border-radius: 4px;\
+            border: 1px solid #e9ecef;\
+        }\
+        .feature-group-content .gchoice {\
+            margin-bottom: 8px;\
+            padding: 4px 0;\
+        }\
+        .toggle-arrow {\
+            transition: transform 0.3s ease;\
+            font-size: 12px;\
+            font-weight: bold;\
+        }\
         @media (max-width: 768px) {\
             #notePopup, #vehiclePopup, #featurePopup, #trimLevelsPopup {\
                 width: 95%;\
@@ -1456,6 +1489,148 @@ jQuery(document).ready(function($) {
      * Ends with open brace for Part 2/5.
      * Meets minimum line requirement.
      */
+    
+    /**
+     * Builds collapsible feature groups with alphabetical sorting for GMC models.
+     * Groups features like Wheels, Seats, Engine, Axle Ratio, GVWR into collapsible sections.
+     * @param {Array} features - Array of feature names
+     * @param {string} category - Category name (EXTERIOR, INTERIOR, MECHANICAL, SAFETY, PACKAGES)
+     * @param {string} modelPrefix - Model prefix for IDs (terrain, sierra1500, etc.)
+     * @param {number} startIndex - Starting global index for checkbox IDs
+     * @returns {Object} - Object with html string and updated globalIndex
+     */
+    function buildCollapsibleFeatureGroups(features, category, modelPrefix, startIndex) {
+        var html = '';
+        var globalIndex = startIndex;
+        
+        // Define collapsible groups for each category
+        var collapsibleGroups = {
+            'EXTERIOR': [
+                { name: 'Wheels', keywords: ['wheel', 'rim', 'tire'] }
+            ],
+            'INTERIOR': [
+                { name: 'Seats', keywords: ['seat'] }
+            ],
+            'MECHANICAL': [
+                { name: 'Axle Ratio', keywords: ['axle ratio'] },
+                { name: 'GVWR', keywords: ['gvwr'] },
+                { name: 'Engine', keywords: ['engine'] }
+            ],
+            'SAFETY': [],
+            'PACKAGES': []
+        };
+        
+        var categoryGroups = collapsibleGroups[category] || [];
+        var groupedFeatures = {};
+        var ungroupedFeatures = [];
+        
+        // Initialize grouped features
+        categoryGroups.forEach(function(group) {
+            groupedFeatures[group.name] = [];
+        });
+        
+        // Sort and group features
+        features.forEach(function(feature) {
+            var featureLower = feature.toLowerCase();
+            var grouped = false;
+            
+            // Check if feature belongs to any group
+            categoryGroups.forEach(function(group) {
+                if (!grouped && group.keywords.some(function(keyword) {
+                    return featureLower.includes(keyword.toLowerCase());
+                })) {
+                    groupedFeatures[group.name].push(feature);
+                    grouped = true;
+                }
+            });
+            
+            // If not grouped, add to ungrouped
+            if (!grouped) {
+                ungroupedFeatures.push(feature);
+            }
+        });
+        
+        // Build HTML for collapsible groups
+        categoryGroups.forEach(function(group) {
+            var groupFeatures = groupedFeatures[group.name];
+            if (groupFeatures.length > 0) {
+                // Sort group features alphabetically
+                groupFeatures.sort(function(a, b) {
+                    return a.toLowerCase().localeCompare(b.toLowerCase());
+                });
+                
+                var groupId = modelPrefix + '_' + category.toLowerCase() + '_' + group.name.toLowerCase().replace(/\s+/g, '');
+                
+                // Group button
+                html += '<div class="feature-group-container">';
+                html += '<button type="button" class="feature-group-toggle" data-group="' + groupId + '" style="background: #007cba; color: white; border: none; padding: 8px 12px; margin: 5px 0; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; text-align: left; font-size: 14px;">';
+                html += group.name + ' (' + groupFeatures.length + ') <span class="toggle-arrow" style="float: right;">▼</span>';
+                html += '</button>';
+                
+                // Collapsible content
+                html += '<div class="feature-group-content" id="' + groupId + '" style="display: none; margin-left: 10px; border-left: 2px solid #007cba; padding-left: 10px;">';
+                
+                groupFeatures.forEach(function(feature) {
+                    var checkboxHtml = buildSingleCheckbox(feature, category, modelPrefix, globalIndex);
+                    html += checkboxHtml;
+                    globalIndex++;
+                });
+                
+                html += '</div>';
+                html += '</div>';
+            }
+        });
+        
+        // Build HTML for ungrouped features (sorted alphabetically)
+        ungroupedFeatures.sort(function(a, b) {
+            return a.toLowerCase().localeCompare(b.toLowerCase());
+        });
+        
+        ungroupedFeatures.forEach(function(feature) {
+            var checkboxHtml = buildSingleCheckbox(feature, category, modelPrefix, globalIndex);
+            html += checkboxHtml;
+            globalIndex++;
+        });
+        
+        return {
+            html: html,
+            globalIndex: globalIndex
+        };
+    }
+    
+    /**
+     * Builds a single checkbox HTML element with proper styling and info icon.
+     * @param {string} feature - Feature name
+     * @param {string} category - Category name
+     * @param {string} modelPrefix - Model prefix for IDs
+     * @param {number} index - Global index for unique IDs
+     * @returns {string} - HTML string for the checkbox
+     */
+    function buildSingleCheckbox(feature, category, modelPrefix, index) {
+        var uniqueId = 'choice_3_' + modelPrefix + '_' + index;
+        var inputName = 'input_' + modelPrefix + '_' + index;
+        var simpleValue = modelPrefix + '_feature_' + index;
+        
+        // Initialize global feature mapping
+        var featureMapName = modelPrefix + 'FeatureMap';
+        if (!window[featureMapName]) {
+            window[featureMapName] = {};
+        }
+        window[featureMapName][simpleValue] = feature;
+        
+        // Build HTML using simple string concatenation to avoid any quote issues
+        var divStart = '<div class="gchoice gchoice_' + modelPrefix + '_' + index + '">';
+        var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
+        var labelTag = '<label for="' + uniqueId + '" id="label_' + modelPrefix + '_' + index + '">' + feature + '</label>';
+        
+        // Add feature info icon
+        var infoIcon = '<span class="feature-info-icon ' + modelPrefix + '-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC ' + modelPrefix + ' feature description">ℹ</span>';
+        
+        var divEnd = '</div>';
+        
+        return divStart + inputTag + labelTag + infoIcon + divEnd;
+    }
+
 	function populateTerrainFeatures() {
     console.log('=== populateTerrainFeatures called ===');
     console.log('Current terrainPopulated flag:', terrainPopulated);
@@ -1588,29 +1763,19 @@ jQuery(document).ready(function($) {
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
                     console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
-                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
-                    catFeatures.forEach(function(feature, index) {
-                        var uniqueId = 'choice_3_terrain_' + globalIndex;
-                        var inputName = 'input_terrain_' + globalIndex;
-                        var simpleValue = 'terrain_feature_' + globalIndex;
-                        
-                        // Initialize global feature mapping
-                        if (!window.terrainFeatureMap) {
-                            window.terrainFeatureMap = {};
-                        }
-                        window.terrainFeatureMap[simpleValue] = feature;
-                        
-                        // Build HTML using simple string concatenation to avoid any quote issues
-                        var divStart = '<div class="gchoice gchoice_terrain_' + globalIndex + '">';
-                        var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
-                        var labelTag = '<label for="' + uniqueId + '" id="label_terrain_' + globalIndex + '">' + feature + '</label>';
-                        // Add feature info icon for terrain features
-                        var infoIcon = '<span class="feature-info-icon terrain-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Terrain feature description">ℹ</span>';
-                        var divEnd = '</div>';
-                        
-                        html += divStart + inputTag + labelTag + infoIcon + divEnd;
-                        globalIndex++;
+                    
+                    // Sort features alphabetically within each category
+                    catFeatures.sort(function(a, b) {
+                        return a.toLowerCase().localeCompare(b.toLowerCase());
                     });
+                    
+                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
+                    
+                    // Build collapsible groups and regular features
+                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'terrain', globalIndex);
+                    html += categoryHtml.html;
+                    globalIndex = categoryHtml.globalIndex;
+                    
                     html += '</div></div>';
                 });
                 html += '</div>';
@@ -1873,29 +2038,18 @@ function populateSierra1500Features() {
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
                     console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
-                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
-                    catFeatures.forEach(function(feature, index) {
-                        var uniqueId = 'choice_3_sierra1500_' + globalIndex;
-                        var inputName = 'input_sierra1500_' + globalIndex;
-                        var simpleValue = 'sierra1500_feature_' + globalIndex;
-                        
-                        // Initialize global feature mapping
-                        if (!window.sierra1500FeatureMap) {
-                            window.sierra1500FeatureMap = {};
-                        }
-                        window.sierra1500FeatureMap[simpleValue] = feature;
-                        
-                        // Build HTML using simple string concatenation to avoid any quote issues
-                        var divStart = '<div class="gchoice gchoice_sierra1500_' + globalIndex + '">';
-                        var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
-                        var labelTag = '<label for="' + uniqueId + '" id="label_sierra1500_' + globalIndex + '">' + feature + '</label>';
-                        // Add feature info icon for sierra1500 features
-                        var infoIcon = '<span class="feature-info-icon sierra1500-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Sierra 1500 feature description">ℹ</span>';
-                        var divEnd = '</div>';
-                        
-                        html += divStart + inputTag + labelTag + infoIcon + divEnd;
-                        globalIndex++;
+                    
+                    // Sort features alphabetically within each category
+                    catFeatures.sort(function(a, b) {
+                        return a.toLowerCase().localeCompare(b.toLowerCase());
                     });
+                    
+                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
+                    
+                    // Build collapsible groups and regular features
+                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'sierra1500', globalIndex);
+                    html += categoryHtml.html;
+                    globalIndex = categoryHtml.globalIndex;
                     html += '</div></div>';
                 });
                 html += '</div>';
@@ -2134,29 +2288,19 @@ function populateAcadiaFeatures() {
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
                     console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
-                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
-                    catFeatures.forEach(function(feature, index) {
-                        var uniqueId = 'choice_3_acadia_' + globalIndex;
-                        var inputName = 'input_acadia_' + globalIndex;
-                        var simpleValue = 'acadia_feature_' + globalIndex;
-                        
-                        // Initialize global feature mapping
-                        if (!window.acadiaFeatureMap) {
-                            window.acadiaFeatureMap = {};
-                        }
-                        window.acadiaFeatureMap[simpleValue] = feature;
-                        
-                        // Build HTML using simple string concatenation to avoid any quote issues
-                        var divStart = '<div class="gchoice gchoice_acadia_' + globalIndex + '">';
-                        var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
-                        var labelTag = '<label for="' + uniqueId + '" id="label_acadia_' + globalIndex + '">' + feature + '</label>';
-                        // Add feature info icon for acadia features
-                        var infoIcon = '<span class="feature-info-icon acadia-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Acadia feature description">ℹ</span>';
-                        var divEnd = '</div>';
-                        
-                        html += divStart + inputTag + labelTag + infoIcon + divEnd;
-                        globalIndex++;
+                    
+                    // Sort features alphabetically within each category
+                    catFeatures.sort(function(a, b) {
+                        return a.toLowerCase().localeCompare(b.toLowerCase());
                     });
+                    
+                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
+                    
+                    // Build collapsible groups and regular features
+                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'acadia', globalIndex);
+                    html += categoryHtml.html;
+                    globalIndex = categoryHtml.globalIndex;
+                    
                     html += '</div></div>';
                 });
                 html += '</div>';
@@ -2420,29 +2564,19 @@ function populateYukonFeatures() {
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
                     console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
-                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
-                    catFeatures.forEach(function(feature, index) {
-                        var uniqueId = 'choice_3_yukon_' + globalIndex;
-                        var inputName = 'input_yukon_' + globalIndex;
-                        var simpleValue = 'yukon_feature_' + globalIndex;
-                        
-                        // Initialize global feature mapping
-                        if (!window.yukonFeatureMap) {
-                            window.yukonFeatureMap = {};
-                        }
-                        window.yukonFeatureMap[simpleValue] = feature;
-                        
-                        // Build HTML using simple string concatenation to avoid any quote issues
-                        var divStart = '<div class="gchoice gchoice_yukon_' + globalIndex + '">';
-                        var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
-                        var labelTag = '<label for="' + uniqueId + '" id="label_yukon_' + globalIndex + '">' + feature + '</label>';
-                        // Add feature info icon for yukon features
-                        var infoIcon = '<span class="feature-info-icon yukon-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Yukon feature description">ℹ</span>';
-                        var divEnd = '</div>';
-                        
-                        html += divStart + inputTag + labelTag + infoIcon + divEnd;
-                        globalIndex++;
+                    
+                    // Sort features alphabetically within each category
+                    catFeatures.sort(function(a, b) {
+                        return a.toLowerCase().localeCompare(b.toLowerCase());
                     });
+                    
+                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
+                    
+                    // Build collapsible groups and regular features
+                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'yukon', globalIndex);
+                    html += categoryHtml.html;
+                    globalIndex = categoryHtml.globalIndex;
+                    
                     html += '</div></div>';
                 });
                 html += '</div>';
@@ -2695,29 +2829,19 @@ function populateCanyonFeatures() {
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
                     console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
-                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
-                    catFeatures.forEach(function(feature, index) {
-                        var uniqueId = 'choice_3_canyon_' + globalIndex;
-                        var inputName = 'input_canyon_' + globalIndex;
-                        var simpleValue = 'canyon_feature_' + globalIndex;
-                        
-                        // Initialize global feature mapping
-                        if (!window.canyonFeatureMap) {
-                            window.canyonFeatureMap = {};
-                        }
-                        window.canyonFeatureMap[simpleValue] = feature;
-                        
-                        // Build HTML using simple string concatenation to avoid any quote issues
-                        var divStart = '<div class="gchoice gchoice_canyon_' + globalIndex + '" style="margin-bottom: 10px;">';
-                        var inputTag = '<input name="' + inputName + '" type="checkbox" value="' + simpleValue + '" data-category="' + category + '" id="' + uniqueId + '">';
-                        var labelTag = '<label for="' + uniqueId + '" id="label_canyon_' + globalIndex + '">' + feature + '</label>';
-                        // Add blue info icon AFTER the label exactly like Terrain, Acadia, and Yukon
-                        var infoIcon = '<span class="feature-info-icon canyon-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC Canyon feature description">ℹ</span>';
-                        var divEnd = '</div>';
-                        
-                        html += divStart + inputTag + labelTag + infoIcon + divEnd;
-                        globalIndex++;
+                    
+                    // Sort features alphabetically within each category
+                    catFeatures.sort(function(a, b) {
+                        return a.toLowerCase().localeCompare(b.toLowerCase());
                     });
+                    
+                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
+                    
+                    // Build collapsible groups and regular features
+                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'canyon', globalIndex);
+                    html += categoryHtml.html;
+                    globalIndex = categoryHtml.globalIndex;
+                    
                     html += '</div></div>';
                 });
                 html += '</div>';
@@ -5576,6 +5700,41 @@ function initFormBindings() {
                 console.log('Rebound inputs after confirmation loaded for form ' + formId);
             }
         });
+        
+        // Initialize collapsible feature group handlers
+        initCollapsibleGroupHandlers();
+    }
+    
+    /**
+     * Initializes event handlers for collapsible feature groups
+     */
+    function initCollapsibleGroupHandlers() {
+        // Use event delegation to handle dynamically created buttons
+        $(document).off('click.featureGroupToggle').on('click.featureGroupToggle', '.feature-group-toggle', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            var button = $(this);
+            var groupId = button.data('group');
+            var content = $('#' + groupId);
+            var arrow = button.find('.toggle-arrow');
+            
+            if (content.length) {
+                if (content.is(':visible')) {
+                    // Hide the group
+                    content.slideUp(200);
+                    arrow.text('▼');
+                    button.attr('aria-expanded', 'false');
+                } else {
+                    // Show the group
+                    content.slideDown(200);
+                    arrow.text('▲');
+                    button.attr('aria-expanded', 'true');
+                }
+            }
+        });
+        
+        console.log('Collapsible feature group handlers initialized');
     }
 
     function debounce(func, wait) {
