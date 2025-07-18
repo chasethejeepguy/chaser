@@ -1503,55 +1503,61 @@ jQuery(document).ready(function($) {
         var html = '';
         var globalIndex = startIndex;
         
-        // Define collapsible groups for each category
+        // Define collapsible groups for each category (alphabetically ordered)
         var collapsibleGroups = {
             'EXTERIOR': [
-                { name: 'Wheels', keywords: ['wheel', 'rim', 'tire'] },
+                { name: 'Bed', keywords: ['bed', 'bedliner'] },
+                { name: 'Liftgate', keywords: ['liftgate'] },
+                { name: 'Lights', keywords: ['lights', 'light', 'headlamp', 'led', 'lamps', 'lighting'] },
+                { name: 'Roofs', keywords: ['roof', 'sunroof'] },
                 { name: 'Steps', keywords: ['step'] },
                 { name: 'Tailgates', keywords: ['tailgate'] },
-                { name: 'Lights', keywords: ['lights', 'light', 'headlamp', 'led', 'lamps', 'lighting'] },
-                { name: 'Liftgate', keywords: ['liftgate'] },
-                { name: 'Roofs', keywords: ['roof', 'sunroof'] },
-                { name: 'Bed', keywords: ['bed', 'bedliner'] },
-                { name: 'Utility', keywords: ['utility'] }
+                { name: 'Utility', keywords: ['utility'] },
+                { name: 'Wheels', keywords: ['wheel', 'rim', 'tire'] }
             ],
             'INTERIOR': [
-                { name: 'Seats', keywords: ['seat'] },
-                { name: 'Speakers', keywords: ['speaker', 'bose', 'audio'] },
-                { name: 'Displays', keywords: ['infotainment', 'screen', 'display', 'diagonal'] },
-                { name: 'Cameras', keywords: ['camera', 'hd surround vision'] },
-                { name: 'Entertainment', keywords: ['wifi', 'apple', 'android', 'phone', 'navigation', 'sirius', 'siriusxm'] },
                 { name: 'All Weather', keywords: ['all weather'] },
-                { name: 'Remote', keywords: ['remote'] },
+                { name: 'Cameras', keywords: ['camera', 'hd surround vision'] },
                 { name: 'Cruise', keywords: ['cruise', 'super cruise'] },
-                { name: 'Hitch', keywords: ['hitch'] }
+                { name: 'Displays', keywords: ['infotainment', 'screen', 'display', 'diagonal'] },
+                { name: 'Entertainment', keywords: ['wifi', 'apple', 'android', 'phone', 'navigation', 'sirius', 'siriusxm'] },
+                { name: 'Hitch', keywords: ['hitch'] },
+                { name: 'OnStar', keywords: ['onstar'] },
+                { name: 'Remote', keywords: ['remote'] },
+                { name: 'Seats', keywords: ['seat'] },
+                { name: 'Speakers', keywords: ['speaker', 'bose', 'audio'] }
             ],
             'MECHANICAL': [
-                { name: 'Axle Ratio', keywords: ['axle ratio'] },
-                { name: 'GVWR', keywords: ['gvwr'] },
-                { name: 'Engine', keywords: ['engine'] },
-                { name: 'Suspension', keywords: ['suspension', 'ride'] },
-                { name: 'Drive', keywords: ['drive'] },
-                { name: 'Control', keywords: ['control'] },
+                { name: 'Accessory', keywords: ['accessory'] },
+                { name: 'AEV', keywords: ['aev'] },
                 { name: 'AutoTrac', keywords: ['autotrac'] },
-                { name: 'Exhaust', keywords: ['exhaust'] }
+                { name: 'Axle Ratio', keywords: ['axle ratio'] },
+                { name: 'Control', keywords: ['control'] },
+                { name: 'Drive', keywords: ['drive'] },
+                { name: 'Engine', keywords: ['engine'] },
+                { name: 'Exhaust', keywords: ['exhaust'] },
+                { name: 'GVWR', keywords: ['gvwr'] },
+                { name: 'Performance', keywords: ['performance'] },
+                { name: 'Suspension', keywords: ['suspension', 'ride'] }
             ],
             'SAFETY': [
                 { name: 'Alerts', keywords: ['alert'] },
+                { name: 'Assist', keywords: ['assist'] },
                 { name: 'Braking', keywords: ['braking'] },
                 { name: 'Cameras', keywords: ['camera', 'vision'] },
-                { name: 'Assist', keywords: ['assist'] },
                 { name: 'Control', keywords: ['control'] },
                 { name: 'Hitch', keywords: ['hitch'] }
             ],
             'PACKAGES': [
                 { name: 'AT4', keywords: ['at4'] },
+                { name: 'Black', keywords: ['black'] },
+                { name: 'Convenience', keywords: ['convenience'] },
                 { name: 'Denali', keywords: ['denali'] },
                 { name: 'Elevation', keywords: ['elevation'] },
+                { name: 'Off Road', keywords: ['off road'] },
                 { name: 'Pro', keywords: ['pro'] },
                 { name: 'SLE', keywords: ['sle'] },
                 { name: 'SLT', keywords: ['slt'] },
-                { name: 'Off Road', keywords: ['off road'] },
                 { name: 'Technology', keywords: ['technology'] }
             ]
         };
