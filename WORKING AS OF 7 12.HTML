@@ -4518,6 +4518,36 @@ function populateCanyonFeatures() {
                 checked: $input.is(':checked'),
                 labelText: $input.next('label').text().substring(0, 100)
             });
+        } else if (model === 'SIERRA 1500') {
+            // For SIERRA 1500, get feature from the global mapping using the checkbox value
+            var checkboxValue = $input.attr('value') || '';
+            feature = window.sierra1500FeatureMap && window.sierra1500FeatureMap[checkboxValue] ? window.sierra1500FeatureMap[checkboxValue] : '';
+            // No need to unescape since we're not storing escaped values anymore
+            
+            console.log('SIERRA 1500 checkbox debug:', {
+                id: $input.attr('id'),
+                checkboxValue: checkboxValue,
+                mappedFeature: feature,
+                featureLength: feature.length,
+                name: $input.attr('name'),
+                checked: $input.is(':checked'),
+                labelText: $input.next('label').text().substring(0, 100)
+            });
+        } else if (model === 'ACADIA') {
+            // For ACADIA, get feature from the global mapping using the checkbox value
+            var checkboxValue = $input.attr('value') || '';
+            feature = window.acadiaFeatureMap && window.acadiaFeatureMap[checkboxValue] ? window.acadiaFeatureMap[checkboxValue] : '';
+            // No need to unescape since we're not storing escaped values anymore
+            
+            console.log('ACADIA checkbox debug:', {
+                id: $input.attr('id'),
+                checkboxValue: checkboxValue,
+                mappedFeature: feature,
+                featureLength: feature.length,
+                name: $input.attr('name'),
+                checked: $input.is(':checked'),
+                labelText: $input.next('label').text().substring(0, 100)
+            });
         } else {
             // For other models, use the existing logic
             var $div = $input.closest('.gfield_checkbox > div, .gfield-choice-wrapper');
