@@ -5910,9 +5910,19 @@ function initFormBindings() {
                     return;
                 }
 
-                var filteredVehicles = results.data.filter(function(row) {
-                    var series = row['Series'] ? row['Series'].trim() : '';
+                // First filter by model (exact match only - no fuzzy matching for performance)
+                var modelFilteredVehicles = results.data.filter(function(row) {
                     var vehicleModel = row['Model'] ? row['Model'].trim() : '';
+                    
+                    // Use exact match for model filtering (case-insensitive)
+                    return vehicleModel.toUpperCase() === modelFilter.toUpperCase();
+                });
+
+                console.log('Model filtered vehicles for ' + modelFilter + ':', modelFilteredVehicles.length);
+
+                // Then filter by trim levels within the model-matched vehicles
+                var filteredVehicles = modelFilteredVehicles.filter(function(row) {
+                    var series = row['Series'] ? row['Series'].trim() : '';
                     
                     // Safety check for trimLevels
                     if (!Array.isArray(trimLevels) || trimLevels.length === 0) {
@@ -5920,42 +5930,29 @@ function initFormBindings() {
                         return false;
                     }
                     
-                    // First check for exact model match (more efficient)
-                    var matchesModel = false;
-                    if (model === 'K4') {
-                        matchesModel = vehicleModel.toUpperCase() === modelFilter.toUpperCase();
-                    } else {
-                        // For GMC models, check exact match first, then fuzzy match if needed
-                        if (vehicleModel.toUpperCase() === modelFilter.toUpperCase()) {
-                            matchesModel = true;
-                        } else {
-                            // Only use fuzzy matching as fallback and only for similar models
-                            var similarity = fuzzyMatch(modelFilter, vehicleModel, model, vehicleModel);
-                            matchesModel = similarity >= 0.8; // Higher threshold for model matching
-                        }
-                    }
-                    
-                    // Only check trim levels if model matches (more efficient)
-                    if (!matchesModel) {
-                        return false;
-                    }
-                    
+                    // Check if any trim level matches the series
                     var matchesTrim = trimLevels.some(function(trim) {
-                        return model === 'K4' ? trim.toUpperCase() === series.toUpperCase() : fuzzyMatch(trim, series, model, series);
+                        if (model === 'K4') {
+                            return trim.toUpperCase() === series.toUpperCase();
+                        } else {
+                            // Use fuzzy matching for trim levels only within the correct model
+                            var similarity = fuzzyMatch(trim, series, model, series);
+                            return similarity >= 0.4; // Standard threshold for trim matching
+                        }
                     });
                     
-                    // Only log for vehicles that match the model (reduce debug spam)
-                    if (matchesModel) {
-                        console.log('Vehicle check:', {
+                    // Only log vehicles that match trim levels (much less debug spam)
+                    if (matchesTrim) {
+                        console.log('Trim match found:', {
                             series: series,
-                            vehicleModel: vehicleModel,
-                            modelFilter: modelFilter,
-                            matchesTrim: matchesTrim,
-                            matchesModel: matchesModel
+                            vehicleModel: row['Model'],
+                            trim: trimLevels.find(function(t) { 
+                                return model === 'K4' ? t.toUpperCase() === series.toUpperCase() : fuzzyMatch(t, series, model, series) >= 0.4;
+                            })
                         });
                     }
                     
-                    return matchesTrim && matchesModel;
+                    return matchesTrim;
                 });
 
                 console.log('Filtered vehicles for ' + model + ' (Model: ' + modelFilter + '):', filteredVehicles.length);
