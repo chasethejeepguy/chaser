@@ -1506,18 +1506,34 @@ jQuery(document).ready(function($) {
         // Define collapsible groups for each category
         var collapsibleGroups = {
             'EXTERIOR': [
-                { name: 'Wheels', keywords: ['wheel', 'rim', 'tire'] }
+                { name: 'Wheels', keywords: ['wheel', 'rim', 'tire'] },
+                { name: 'Steps', keywords: ['step'] },
+                { name: 'Tailgates', keywords: ['tailgate'] }
             ],
             'INTERIOR': [
-                { name: 'Seats', keywords: ['seat'] }
+                { name: 'Seats', keywords: ['seat'] },
+                { name: 'Speakers', keywords: ['speaker'] },
+                { name: 'Displays', keywords: ['infotainment', 'screen', 'display'] },
+                { name: 'Cameras', keywords: ['camera'] }
             ],
             'MECHANICAL': [
                 { name: 'Axle Ratio', keywords: ['axle ratio'] },
                 { name: 'GVWR', keywords: ['gvwr'] },
                 { name: 'Engine', keywords: ['engine'] }
             ],
-            'SAFETY': [],
-            'PACKAGES': []
+            'SAFETY': [
+                { name: 'Alerts', keywords: ['alert'] },
+                { name: 'Braking', keywords: ['braking'] },
+                { name: 'Cameras', keywords: ['camera', 'vision'] }
+            ],
+            'PACKAGES': [
+                { name: 'AT4', keywords: ['at4'] },
+                { name: 'Denali', keywords: ['denali'] },
+                { name: 'Elevation', keywords: ['elevation'] },
+                { name: 'Pro', keywords: ['pro'] },
+                { name: 'SLE', keywords: ['sle'] },
+                { name: 'SLT', keywords: ['slt'] }
+            ]
         };
         
         var categoryGroups = collapsibleGroups[category] || [];
