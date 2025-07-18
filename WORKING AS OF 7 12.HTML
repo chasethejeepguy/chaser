@@ -2848,6 +2848,7 @@ function populateCanyonFeatures() {
 		console.log('Processing TERRAIN trim levels for selected features:', selectedFeatures);
 		
 		var trimLevels = ['ELEVATION', 'AT4', 'DENALI'];
+		var correctModelFilter = 'Terrain'; // Store correct model filter for showTrimLevelsPopup
 		var matchingTrimLevels = [];
 		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
 		var featureToColumnMap = {};
@@ -3068,8 +3069,8 @@ function populateCanyonFeatures() {
 			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
 				e.preventDefault();
 				if (matchingTrimLevels.length > 0) {
-					// Call the proper showTrimLevelsPopup function like other models
-					showTrimLevelsPopup(model, matchingTrimLevels, model);
+					// Call the proper showTrimLevelsPopup function with correct model filter
+					showTrimLevelsPopup(model, matchingTrimLevels, correctModelFilter);
 				} else {
 					alert('No trim levels match your selected features. Please adjust your selections.');
 				}
@@ -3084,6 +3085,7 @@ function populateCanyonFeatures() {
 		console.log('Processing ACADIA trim levels for selected features:', selectedFeatures);
 		
 		var trimLevels = ['SL', 'SLE', 'SLT', 'DENALI', 'AT4']; // Common Acadia trim levels
+		var correctModelFilter = 'Acadia'; // Store correct model filter for showTrimLevelsPopup
 		var matchingTrimLevels = [];
 		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
 		var featureToColumnMap = {};
@@ -3278,8 +3280,8 @@ function populateCanyonFeatures() {
 			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
 				e.preventDefault();
 				if (matchingTrimLevels.length > 0) {
-					// Call the proper showTrimLevelsPopup function like other models
-					showTrimLevelsPopup(model, matchingTrimLevels, model);
+					// Call the proper showTrimLevelsPopup function with correct model filter
+					showTrimLevelsPopup(model, matchingTrimLevels, correctModelFilter);
 				} else {
 					alert('No trim levels match your selected features. Please adjust your selections.');
 				}
@@ -3294,6 +3296,7 @@ function populateCanyonFeatures() {
 		console.log('Processing YUKON trim levels for selected features:', selectedFeatures);
 		
 		var trimLevels = ['AT4', 'DENALI', 'ELEVATION', 'AT4 ULTIMATE', 'DENALI ULTIMATE'];
+		var correctModelFilter = 'Yukon'; // Store correct model filter for showTrimLevelsPopup
 		var matchingTrimLevels = [];
 		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
 		var featureToColumnMap = {};
@@ -3507,8 +3510,8 @@ function populateCanyonFeatures() {
 			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
 				e.preventDefault();
 				if (matchingTrimLevels.length > 0) {
-					// Call the proper showTrimLevelsPopup function like other models
-					showTrimLevelsPopup(model, matchingTrimLevels, model);
+					// Call the proper showTrimLevelsPopup function with correct model filter
+					showTrimLevelsPopup(model, matchingTrimLevels, correctModelFilter);
 				} else {
 					alert('No trim levels match your selected features. Please adjust your selections.');
 				}
@@ -3523,6 +3526,7 @@ function populateCanyonFeatures() {
 		console.log('Processing CANYON trim levels for selected features:', selectedFeatures);
 		
 		var trimLevels = ['AT4', 'DENALI', 'ELEVATION'];
+		var correctModelFilter = 'Canyon'; // Store correct model filter for showTrimLevelsPopup
 		var matchingTrimLevels = [];
 		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
 		var featureToColumnMap = {};
@@ -3679,8 +3683,8 @@ function populateCanyonFeatures() {
 			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
 				e.preventDefault();
 				if (matchingTrimLevels.length > 0) {
-					// Call the proper showTrimLevelsPopup function like other models
-					showTrimLevelsPopup(model, matchingTrimLevels, model);
+					// Call the proper showTrimLevelsPopup function with correct model filter
+					showTrimLevelsPopup(model, matchingTrimLevels, correctModelFilter);
 				} else {
 					alert('No trim levels match your selected features. Please adjust your selections.');
 				}
@@ -3839,8 +3843,8 @@ function populateCanyonFeatures() {
 				e.preventDefault();
 				if (matchingTrimLevels.length > 0) {
 					console.log('Showing Sierra 1500 trim levels popup');
-					// Call the proper showTrimLevelsPopup function like other models
-					showTrimLevelsPopup(model, matchingTrimLevels, model);
+					// Call the proper showTrimLevelsPopup function with correct model filter
+					showTrimLevelsPopup(model, matchingTrimLevels, 'Sierra 1500');
 				} else {
 					alert('No matching Sierra 1500 trim levels found for the selected features.');
 				}
