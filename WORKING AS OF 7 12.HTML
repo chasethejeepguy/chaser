@@ -1691,21 +1691,8 @@ jQuery(document).ready(function($) {
                     updateTrimLevels('TERRAIN');
                 });
 
-                htmlBlock.find('.gchoice').each(function() {
-                    var $div = $(this);
-                    var $input = $div.find('input[type="checkbox"]');
-                    var $label = $div.find('label');
-                    var feature = $label.text().trim();
-                    if (feature) {
-                        var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
-                            return fuzzyMatch(key, feature, 'TERRAIN', feature);
-                        });
-                        if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
-                            $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
-                            console.log('Prepended info icon for feature: ' + feature);
-                        }
-                    }
-                });
+                // Info icons are already included in the initial HTML generation above
+                // No need to prepend additional icons to avoid duplicates
 
                 htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
                     e.preventDefault();
@@ -1962,21 +1949,8 @@ function populateSierra1500Features() {
                     updateTrimLevels('SIERRA 1500');
                 });
 
-                htmlBlock.find('.gchoice').each(function() {
-                    var $div = $(this);
-                    var $input = $div.find('input[type="checkbox"]');
-                    var $label = $div.find('label');
-                    var feature = $label.text().trim();
-                    if (feature) {
-                        var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
-                            return fuzzyMatch(key, feature, 'SIERRA 1500', feature);
-                        });
-                        if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
-                            $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
-                            console.log('Prepended info icon for feature: ' + feature);
-                        }
-                    }
-                });
+                // Info icons are already included in the initial HTML generation above
+                // No need to prepend additional icons to avoid duplicates
 
                 htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
                     e.preventDefault();
@@ -2263,21 +2237,8 @@ function populateAcadiaFeatures() {
                     updateTrimLevels('ACADIA');
                 });
 
-                htmlBlock.find('.gchoice').each(function() {
-                    var $div = $(this);
-                    var $input = $div.find('input[type="checkbox"]');
-                    var $label = $div.find('label');
-                    var feature = $label.text().trim();
-                    if (feature) {
-                        var matchedFeature = Object.keys(featureDescriptions).find(function(key) {
-                            return fuzzyMatch(key, feature, 'ACADIA', feature);
-                        });
-                        if (matchedFeature && !$div.find('.feature-info-icon[data-feature="' + matchedFeature + '"]').length) {
-                            $label.prepend('<span class="feature-info-icon" data-feature="' + matchedFeature + '">i</span>');
-                            console.log('Prepended info icon for feature: ' + feature);
-                        }
-                    }
-                });
+                // Info icons are already included in the initial HTML generation above
+                // No need to prepend additional icons to avoid duplicates
 
                 htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
                     e.preventDefault();
