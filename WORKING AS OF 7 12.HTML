@@ -3878,7 +3878,8 @@ function populateCanyonFeatures() {
 				e.preventDefault();
 				if (matchingTrimLevels.length > 0) {
 					console.log('Showing Sierra 1500 trim levels popup');
-					// Show trim levels popup (this would need to be implemented)
+					// Call the proper showTrimLevelsPopup function like other models
+					showTrimLevelsPopup(model, matchingTrimLevels, model);
 				} else {
 					alert('No matching Sierra 1500 trim levels found for the selected features.');
 				}
