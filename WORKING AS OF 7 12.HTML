@@ -3540,216 +3540,7 @@ function populateCanyonFeatures() {
 		trimLevelsData[model] = matchingTrimLevels;
 	}
 
-	function processAcadiaTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
-		console.log('Processing ACADIA trim levels for selected features:', selectedFeatures);
-		
-		var trimLevels = ['SL', 'SLE', 'SLT', 'DENALI', 'AT4']; // Common Acadia trim levels
-		var correctModelFilter = 'Acadia'; // Store correct model filter for showTrimLevelsPopup
-		var matchingTrimLevels = [];
-		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
-		var featureToColumnMap = {};
-		var featureToCategoryMap = {};
-		var trimLevelRows = {};
-		var trimLevelRowsByCategory = {};
-		var currentCategory = null;
-		
-		// Parse the CSV data to map features to columns and find trim level rows
-		csvData.forEach(function(row, rowIndex) {
-			if (row.length > 0) {
-				var firstCell = row[0] ? row[0].trim() : '';
-				
-				// Check if this is a category header row
-				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
-					var category = firstCell.match(/\{(.+)\}/)[1];
-					currentCategory = category;
-					console.log('Found category:', category);
-					
-					// Initialize category storage if not exists
-					if (!trimLevelRowsByCategory[category]) {
-						trimLevelRowsByCategory[category] = {};
-					}
-					
-					// Map features to their column indices
-					for (var i = 1; i < row.length; i++) {
-						var feature = row[i] ? row[i].trim() : '';
-						if (feature && feature !== '') {
-							// Clean up the feature name the same way as in populateAcadiaFeatures
-							var cleanedFeature = feature;
-							if (cleanedFeature.startsWith('"') && cleanedFeature.endsWith('"')) {
-								cleanedFeature = cleanedFeature.slice(1, -1);
-							}
-							cleanedFeature = cleanedFeature.replace(/""/g, '"');
-							
-							featureToColumnMap[cleanedFeature] = i;
-							featureToCategoryMap[cleanedFeature] = category;
-							console.log('Mapped feature "' + cleanedFeature + '" (raw: "' + feature + '") to column ' + i + ' in category ' + category);
-						}
-					}
-				}
-				// Check if this is a trim level row
-				else if (trimLevels.includes(firstCell) && currentCategory) {
-					// Store in both global and category-specific storage
-					trimLevelRows[firstCell] = row;
-					trimLevelRowsByCategory[currentCategory][firstCell] = row;
-					console.log('Found trim level row for:', firstCell, 'in category:', currentCategory);
-				}
-			}
-		});
-		
-		console.log('Feature to column mapping:', featureToColumnMap);
-		console.log('Feature to category mapping:', featureToCategoryMap);
-		console.log('Trim level rows:', Object.keys(trimLevelRows));
-		console.log('Trim level rows by category:', trimLevelRowsByCategory);
-		
-		// Check which trim levels have all selected features
-		trimLevels.forEach(function(trimLevel) {
-			if (trimLevelRows[trimLevel]) {
-				var hasAllFeatures = true;
-				var featureResults = [];
-				
-				selectedFeatures.forEach(function(feature) {
-					var columnIndex = featureToColumnMap[feature];
-					var matchedFeature = feature;
-					
-					// If exact match not found, try fuzzy matching
-					if (columnIndex === undefined) {
-						console.log('Feature "' + feature + '" not found in column mapping, trying fuzzy matching...');
-						var bestMatch = null;
-						var bestScore = 0;
-						var threshold = 0.3; // Lower threshold for partial matches
-						
-						// Try to find partial matches
-						Object.keys(featureToColumnMap).forEach(function(csvFeature) {
-							var score = 0;
-							
-							// Check if the selected feature is contained in the CSV feature
-							if (csvFeature.toLowerCase().includes(feature.toLowerCase())) {
-								score = 0.8; // High score for containment
-							}
-							// Check if CSV feature starts with the selected feature
-							else if (csvFeature.toLowerCase().startsWith(feature.toLowerCase())) {
-								score = 0.7;
-							}
-							// Check if selected feature is a significant part of CSV feature
-							else if (feature.length >= 3 && csvFeature.toLowerCase().includes(feature.toLowerCase())) {
-								score = 0.6;
-							}
-							// Fuzzy string matching as fallback
-							else {
-								var featureNorm = feature.toLowerCase().replace(/[^a-z0-9]/g, '');
-								var csvFeatureNorm = csvFeature.toLowerCase().replace(/[^a-z0-9]/g, '');
-								if (featureNorm.length > 0 && csvFeatureNorm.length > 0) {
-									var commonLength = 0;
-									var maxLength = Math.max(featureNorm.length, csvFeatureNorm.length);
-									for (var i = 0; i < Math.min(featureNorm.length, csvFeatureNorm.length); i++) {
-										if (featureNorm[i] === csvFeatureNorm[i]) {
-											commonLength++;
-										} else {
-											break;
-										}
-									}
-									score = commonLength / maxLength;
-								}
-							}
-							
-							console.log('Fuzzy match attempt: "' + feature + '" vs "' + csvFeature + '": score=' + score);
-							
-							if (score > bestScore && score >= threshold) {
-								bestScore = score;
-								bestMatch = csvFeature;
-							}
-						});
-						
-						if (bestMatch) {
-							console.log('Found fuzzy match for "' + feature + '": "' + bestMatch + '" (score: ' + bestScore + ')');
-							columnIndex = featureToColumnMap[bestMatch];
-							matchedFeature = bestMatch;
-						}
-					}
-					
-					if (columnIndex !== undefined) {
-						// Get the category for this feature
-						var featureCategory = featureToCategoryMap[matchedFeature];
-						var value = null;
-						
-						// Use category-specific trim level data if available
-						if (featureCategory && trimLevelRowsByCategory[featureCategory] && trimLevelRowsByCategory[featureCategory][trimLevel]) {
-							value = trimLevelRowsByCategory[featureCategory][trimLevel][columnIndex];
-							console.log('Using category-specific data for ' + trimLevel + ' in category ' + featureCategory + ', column ' + columnIndex + ': "' + value + '"');
-						} else {
-							// Fallback to global trim level data
-							value = trimLevelRows[trimLevel][columnIndex];
-							console.log('Using global data for ' + trimLevel + ', column ' + columnIndex + ': "' + value + '"');
-						}
-						
-						// Clean up the value and check for YES
-						var cleanedValue = value ? value.trim().toLowerCase() : '';
-						var hasFeature = cleanedValue === 'yes';
-						
-						featureResults.push({
-							feature: feature,
-							matchedFeature: matchedFeature,
-							value: value,
-							cleanedValue: cleanedValue,
-							hasFeature: hasFeature
-						});
-						
-						console.log('Feature check for ' + trimLevel + ': "' + feature + '" -> "' + matchedFeature + '" = "' + value + '" (' + cleanedValue + ') -> ' + hasFeature);
-						
-						if (!hasFeature) {
-							hasAllFeatures = false;
-						}
-					} else {
-						console.log('Feature "' + feature + '" not found in column mapping even with fuzzy matching');
-						hasAllFeatures = false;
-					}
-				});
-				
-				console.log('Trim level ' + trimLevel + ' feature check:', featureResults);
-				console.log('Has all features:', hasAllFeatures);
-				
-				if (hasAllFeatures) {
-					matchingTrimLevels.push(trimLevel);
-				}
-			}
-		});
-		
-		console.log('Matching trim levels for ' + model + ':', matchingTrimLevels);
-		
-		// Update the HTML block with results
-		var resultText = '';
-		if (matchingTrimLevels.length > 0) {
-			resultText = 'Available trim levels with your selected features: ' + matchingTrimLevels.join(', ');
-		} else {
-			resultText = 'No trim levels have all your selected features. Please adjust your selections.';
-		}
-		
-		if (htmlBlock.length) {
-			htmlBlock.find('p').text(resultText);
-		}
-		
-		// Update the trim levels button
-		if (trimLevelsButtonBlock.length) {
-			var buttonText = matchingTrimLevels.length > 0 ? 
-				'View Available Trim Levels (' + matchingTrimLevels.length + ')' : 
-				'No Matching Trim Levels';
-			
-			trimLevelsButtonBlock.html('<button type="button" id="viewTrimLevelsButton" class="button">' + buttonText + '</button>');
-			
-			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
-				e.preventDefault();
-				if (matchingTrimLevels.length > 0) {
-					// Call the proper showTrimLevelsPopup function with correct model filter
-					showTrimLevelsPopup(model, matchingTrimLevels, correctModelFilter);
-				} else {
-					alert('No trim levels match your selected features. Please adjust your selections.');
-				}
-			});
-		}
-		
-		// Store the results
-		trimLevelsData[model] = matchingTrimLevels;
-	}
+
 
 	function processYukonTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
 		console.log('Processing YUKON trim levels for selected features:', selectedFeatures);
@@ -5216,19 +5007,144 @@ function populateCanyonFeatures() {
             return;
         }
         
-        // Special handling for ACADIA model
+        // Special handling for ACADIA model - use standard GMC processing
         if (model === 'ACADIA') {
             // Log the full CSV content to debug data issues
             console.log('=== FULL ACADIA CSV CONTENT ===');
             console.log(csvText);
             console.log('=== END ACADIA CSV CONTENT ===');
             
+            // Use standard GMC processing with header parsing
             Papa.parse(csvText, {
+                header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
                     console.log(model + ' CSV parsed, rows: ' + results.data.length);
                     console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
-                    processAcadiaTrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
+                    
+                    if (results.data.length === 0 || !results.meta.fields.includes('TRIM LEVELS')) {
+                        console.error(`${model} CSV parsed with 0 rows or missing TRIM LEVELS column`, {
+                            headers: results.meta.fields || [],
+                            firstRow: results.data[0] || 'None',
+                            rawContent: csvText.substring(0, 500)
+                        });
+                        var noMatchText = 'No trim levels match your selected features. Please adjust your selections.';
+                        var defaultButtonText = '<button type="button" id="viewTrimLevelsButton" class="button">No Matching Trim Levels</button>';
+                        if (htmlBlock.length) {
+                            htmlBlock.find('p').text(noMatchText);
+                        }
+                        if (trimLevelsButtonBlock.length) {
+                            trimLevelsButtonBlock.html(defaultButtonText);
+                            $('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
+                                e.preventDefault();
+                                console.log('View Trim Levels button clicked, no trim levels available');
+                                alert('No matching trim levels found. Please adjust selected features.');
+                            });
+                        }
+                        trimLevelsData[model] = [];
+                        return;
+                    }
+
+                    var trimLevels = [];
+                    var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+                    var featureGroups = {};
+
+                    // Parse GMC ACADIA CSV with categorized features
+                    var currentCategory = null;
+                    var categoryFeatures = [];
+                    var trimRows = [];
+                    results.data.forEach(function(row) {
+                        var firstColumn = Object.keys(row)[0];
+                        if (firstColumn.startsWith('TRIM LEVELS FOR')) {
+                            if (currentCategory && categoryFeatures.length > 0) {
+                                featureGroups[currentCategory] = { features: categoryFeatures, rows: trimRows };
+                            }
+                            currentCategory = firstColumn.match(/TRIM LEVELS FOR \{(.+)\}/)[1];
+                            categoryFeatures = Object.keys(row).slice(1).filter(function(key) { return row[key] && key !== '' && !key.startsWith(','); });
+                            trimRows = [];
+                            console.log('Detected category: ' + currentCategory + ', features: ', categoryFeatures);
+                        } else if (currentCategory && row['TRIM LEVELS']) {
+                            trimRows.push(row);
+                        }
+                    });
+                    if (currentCategory && categoryFeatures.length > 0) {
+                        featureGroups[currentCategory] = { features: categoryFeatures, rows: trimRows };
+                    }
+                    console.log('Feature groups for ' + model + ': ', featureGroups);
+
+                    // Extract all available trim levels dynamically from CSV
+                    var allTrimLevels = new Set();
+                    Object.keys(featureGroups).forEach(function(category) {
+                        var group = featureGroups[category];
+                        if (group && group.rows) {
+                            group.rows.forEach(function(row) {
+                                var trimLevel = row['TRIM LEVELS'] ? row['TRIM LEVELS'].trim() : '';
+                                if (trimLevel && trimLevel !== '') {
+                                    allTrimLevels.add(trimLevel.toUpperCase());
+                                }
+                            });
+                        }
+                    });
+                    console.log('All available trim levels for ' + model + ':', [...allTrimLevels]);
+
+                    // Match selected features to trim levels across categories
+                    var trimLevelSet = new Set([...allTrimLevels]);
+                    selectedFeatures.forEach(function(feature) {
+                        var matchedTrims = new Set();
+                        categories.forEach(function(category) {
+                            var group = featureGroups[category];
+                            if (!group) return;
+                            var matchedFeature = group.features.find(function(f) {
+                                return fuzzyMatch(f, feature, model, feature);
+                            });
+                            if (matchedFeature) {
+                                group.rows.forEach(function(row) {
+                                    var trimLevel = row['TRIM LEVELS'] ? row['TRIM LEVELS'].trim().toUpperCase() : '';
+                                    if (trimLevel && row[matchedFeature] && row[matchedFeature].trim().toUpperCase() === 'YES') {
+                                        matchedTrims.add(trimLevel);
+                                    }
+                                });
+                            }
+                        });
+                        if (matchedTrims.size > 0) {
+                            trimLevelSet = new Set([...trimLevelSet].filter(function(trim) { return matchedTrims.has(trim); }));
+                        }
+                    });
+                    trimLevels = [...trimLevelSet];
+                    console.log('Matched trim levels for ' + model + ': ', trimLevels);
+
+                    // Update UI with results
+                    var resultText = '';
+                    if (trimLevels.length > 0) {
+                        resultText = 'Available trim levels with your selected features: ' + trimLevels.join(', ');
+                    } else {
+                        resultText = 'No trim levels have all your selected features. Please adjust your selections.';
+                    }
+                    
+                    if (htmlBlock.length) {
+                        htmlBlock.find('p').text(resultText);
+                    }
+                    
+                    if (trimLevelsButtonBlock.length) {
+                        var buttonText = trimLevels.length > 0 ? 
+                            'View Available Trim Levels (' + trimLevels.length + ')' : 
+                            'No Matching Trim Levels';
+                        
+                        trimLevelsButtonBlock.html('<button type="button" id="viewTrimLevelsButton" class="button">' + buttonText + '</button>');
+                        
+                        $('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
+                            e.preventDefault();
+                            if (trimLevels.length > 0) {
+                                var config = modelConfigs[model];
+                                var modelFilter = config ? config.modelFilter : model;
+                                showTrimLevelsPopup(model, trimLevels, modelFilter);
+                            } else {
+                                alert('No trim levels match your selected features. Please adjust your selections.');
+                            }
+                        });
+                    }
+                    
+                    trimLevelsData[model] = trimLevels;
                 }
             });
             return;
