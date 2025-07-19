@@ -606,6 +606,18 @@ jQuery(document).ready(function($) {
         .gchoice[class*="gchoice_sierra2500_"] {\
             margin-bottom: 4% !important;\
             padding-bottom: 4px;\
+        }\
+        /* Trim levels left alignment - force override any parent centering */\
+        .trim-levels-display {\
+            text-align: left !important;\
+            margin-left: 0 !important;\
+            padding-left: 0 !important;\
+            display: block !important;\
+            width: 100% !important;\
+            font-size: 10px !important;\
+            color: #666 !important;\
+            margin-top: 2px !important;\
+            line-height: 1 !important;\
         }';
     $('head').append('<style id="popupStyles">' + cssStyles + '</style>');
     console.log('Inline vehicle popup, Field 57, Generate Note, feature popup, trim levels popup, and Push to DriveCentric buttons CSS appended');
@@ -1909,7 +1921,8 @@ jQuery(document).ready(function($) {
         var trimLevelsText = '';
         if (trimLevels && trimLevels.length > 0) {
             var trimText = '(' + trimLevels.join(', ') + ')';
-            trimLevelsText = '<div style="text-align: left; font-size: 10px; color: #666; margin-top: 2px; line-height: 1;">' + trimText + '</div>';
+            trimLevelsText = '<div class="trim-levels-display" style="text-align: left !important; font-size: 10px; color: #666; margin-top: 2px; line-height: 1; display: block; width: 100%;">' + trimText + '</div>';
+            console.log('DEBUG: Adding trim levels for feature with left alignment: ' + trimText);
         }
         
         var divEnd = '</div>';
