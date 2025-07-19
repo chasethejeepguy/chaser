@@ -618,6 +618,35 @@ jQuery(document).ready(function($) {
             color: #666 !important;\
             margin-top: 2px !important;\
             line-height: 1 !important;\
+        }\
+        /* Trim walk popup styles */\
+        .popup-container {\
+            position: fixed;\
+            top: 50%;\
+            left: 50%;\
+            transform: translate(-50%, -50%);\
+            width: 90%;\
+            max-width: 1200px;\
+            max-height: 85vh;\
+            background: linear-gradient(145deg, #ffffff, #f8fafc);\
+            border-radius: 16px;\
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);\
+            z-index: 1001;\
+            overflow-y: auto;\
+            padding: 30px;\
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;\
+        }\
+        .trim-walk-feature {\
+            border-bottom: 1px solid #e5e7eb;\
+            padding: 8px 0;\
+        }\
+        .trim-walk-feature:last-child {\
+            border-bottom: none;\
+        }\
+        .trim-walk-btn:hover {\
+            background: #333 !important;\
+            transform: translateY(-1px);\
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);\
         }';
     $('head').append('<style id="popupStyles">' + cssStyles + '</style>');
     console.log('Inline vehicle popup, Field 57, Generate Note, feature popup, trim levels popup, and Push to DriveCentric buttons CSS appended');
@@ -1800,6 +1829,235 @@ jQuery(document).ready(function($) {
     }
     
     /**
+     * Builds trim level walk buttons for GMC models
+     * @param {Array} trimLevels - Array of trim levels for the model
+     * @param {string} modelPrefix - Model prefix (e.g., 'terrain', 'yukon')
+     * @return {string} HTML for trim level buttons
+     */
+    function buildTrimLevelWalkButtons(trimLevels, modelPrefix) {
+        if (!trimLevels || trimLevels.length === 0) {
+            return '';
+        }
+        
+        // Define the standard trim level order
+        var standardOrder = ['PRO', 'SLE', 'ELEVATION', 'SLT', 'AT4', 'DENALI', 'AT4X', 'DENALI ULTIMATE'];
+        
+        // Filter and sort trim levels based on standard order
+        var orderedTrimLevels = [];
+        standardOrder.forEach(function(standardTrim) {
+            if (trimLevels.includes(standardTrim)) {
+                orderedTrimLevels.push(standardTrim);
+            }
+        });
+        
+        var html = '<div class="trim-walk-section" style="margin-bottom: 30px; text-align: center;">';
+        html += '<h3 style="margin-bottom: 15px; font-size: 18px; color: #1e293b;">Trim Walks:</h3>';
+        html += '<div class="trim-walk-buttons" style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">';
+        
+        orderedTrimLevels.forEach(function(trimLevel, index) {
+            var buttonId = modelPrefix + '_trim_walk_' + trimLevel.toLowerCase().replace(/\s+/g, '_');
+            html += '<button type="button" class="trim-walk-btn" id="' + buttonId + '" ';
+            html += 'data-trim="' + trimLevel + '" data-model="' + modelPrefix + '" data-index="' + index + '" ';
+            html += 'style="background: #000; color: white; border: none; padding: 8px 16px; border-radius: 4px; ';
+            html += 'cursor: pointer; font-size: 14px; font-weight: 500; margin: 2px;">';
+            html += trimLevel;
+            html += '</button>';
+        });
+        
+        html += '</div></div>';
+        return html;
+    }
+    
+    /**
+     * Shows trim level walk popup with features
+     * @param {string} trimLevel - Current trim level
+     * @param {string} modelPrefix - Model prefix
+     * @param {number} trimIndex - Index of current trim level
+     * @param {Array} allTrimLevels - All trim levels for the model
+     */
+    function showTrimWalkPopup(trimLevel, modelPrefix, trimIndex, allTrimLevels) {
+        console.log('Opening trim walk popup for:', trimLevel, modelPrefix, trimIndex);
+        
+        // Get features for this trim level and previous ones
+        var currentFeatures = getTrimLevelFeatures(trimLevel, modelPrefix);
+        var previousFeatures = [];
+        var previousTrimNames = [];
+        
+        // Get features from all previous trim levels
+        for (var i = 0; i < trimIndex; i++) {
+            var prevTrim = allTrimLevels[i];
+            previousTrimNames.push(prevTrim);
+            var prevFeatures = getTrimLevelFeatures(prevTrim, modelPrefix);
+            previousFeatures = previousFeatures.concat(prevFeatures);
+        }
+        
+        // Remove duplicates from previous features
+        previousFeatures = [...new Set(previousFeatures)];
+        
+        // Determine features to show (either all features for first trim, or only new features)
+        var featuresToShow = [];
+        var popupTitle = '';
+        
+        if (trimIndex === 0) {
+            // First trim level - show all features
+            featuresToShow = currentFeatures;
+            popupTitle = 'The ' + trimLevel + ' has all of the following features.';
+        } else {
+            // Higher trim levels - show only new features not in previous trims
+            featuresToShow = currentFeatures.filter(function(feature) {
+                return !previousFeatures.includes(feature);
+            });
+            
+            if (trimIndex === 1) {
+                popupTitle = 'The ' + trimLevel + ' has all of the features of the ' + previousTrimNames[0] + ' and adds the following features:';
+            } else {
+                popupTitle = 'The ' + trimLevel + ' has all of the features of ' + previousTrimNames.join(', ') + ' and adds the following features:';
+            }
+        }
+        
+        // Group features by category
+        var categorizedFeatures = groupFeaturesByCategory(featuresToShow, modelPrefix);
+        
+        // Build popup HTML
+        var popupHtml = buildTrimWalkPopupHTML(popupTitle, categorizedFeatures, modelPrefix);
+        
+        // Show popup
+        showPopup(popupHtml, 'trim-walk-popup');
+    }
+    
+    /**
+     * Gets features for a specific trim level
+     * @param {string} trimLevel - Trim level name
+     * @param {string} modelPrefix - Model prefix
+     * @return {Array} Array of features for the trim level
+     */
+    function getTrimLevelFeatures(trimLevel, modelPrefix) {
+        var features = [];
+        var trimLevelMapName = modelPrefix + 'TrimLevelMap';
+        var trimLevelMap = window[trimLevelMapName];
+        
+        if (trimLevelMap) {
+            Object.keys(trimLevelMap).forEach(function(feature) {
+                var supportedTrims = trimLevelMap[feature];
+                if (supportedTrims && supportedTrims.includes(trimLevel)) {
+                    features.push(feature);
+                }
+            });
+        }
+        
+        return features;
+    }
+    
+    /**
+     * Groups features by category for trim walk display
+     * @param {Array} features - Array of features
+     * @param {string} modelPrefix - Model prefix
+     * @return {Object} Features grouped by category
+     */
+    function groupFeaturesByCategory(features, modelPrefix) {
+        var categories = {
+            'EXTERIOR': [],
+            'INTERIOR': [],
+            'MECHANICAL': [],
+            'SAFETY': [],
+            'PACKAGES': []
+        };
+        
+        var featureToCategoryMapName = modelPrefix + 'FeatureToCategoryMap';
+        var featureToCategoryMap = window[featureToCategoryMapName];
+        
+        if (featureToCategoryMap) {
+            features.forEach(function(feature) {
+                var category = featureToCategoryMap[feature];
+                if (category && categories[category]) {
+                    categories[category].push(feature);
+                }
+            });
+        }
+        
+        // Sort features within each category
+        Object.keys(categories).forEach(function(category) {
+            categories[category].sort(function(a, b) {
+                return a.toLowerCase().localeCompare(b.toLowerCase());
+            });
+        });
+        
+        return categories;
+    }
+    
+    /**
+     * Builds HTML for trim walk popup
+     * @param {string} title - Popup title
+     * @param {Object} categorizedFeatures - Features grouped by category
+     * @param {string} modelPrefix - Model prefix
+     * @return {string} HTML for the popup
+     */
+    function buildTrimWalkPopupHTML(title, categorizedFeatures, modelPrefix) {
+        var html = '<div class="trim-walk-popup-content">';
+        html += '<h2 style="margin-bottom: 20px; color: #1e293b; font-size: 20px; text-align: center;">' + title + '</h2>';
+        html += '<div class="feature-groups" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px;">';
+        
+        var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+        categories.forEach(function(category) {
+            var categoryFeatures = categorizedFeatures[category] || [];
+            html += '<div class="feature-column"><h4 style="text-align: center; font-size: 16px; margin-bottom: 10px; color: #007cba;">' + category + '</h4>';
+            html += '<div class="trim-walk-features">';
+            
+            categoryFeatures.forEach(function(feature) {
+                html += '<div class="trim-walk-feature" style="margin-bottom: 8px; padding: 4px 0; display: flex; align-items: center;">';
+                html += '<span style="flex: 1; font-size: 14px;">' + feature + '</span>';
+                // Add info icon
+                html += '<span class="feature-info-icon ' + modelPrefix + '-info-icon" data-feature="' + feature + '" ';
+                html += 'style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; ';
+                html += 'border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; ';
+                html += 'display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" ';
+                html += 'title="Click for GMC ' + modelPrefix + ' feature description">ℹ</span>';
+                html += '</div>';
+            });
+            
+            html += '</div></div>';
+        });
+        
+        html += '</div></div>';
+        return html;
+    }
+    
+    /**
+     * Shows a generic popup with custom content
+     * @param {string} content - HTML content for the popup
+     * @param {string} popupClass - CSS class for the popup
+     */
+    function showPopup(content, popupClass) {
+        // Remove existing popup if any
+        $('#' + popupClass + ', #overlay').remove();
+        
+        // Create overlay
+        var overlay = $('<div id="overlay"></div>');
+        
+        // Create popup
+        var popup = $('<div id="' + popupClass + '" class="popup-container"></div>');
+        popup.html(content);
+        
+        // Add close button
+        var closeBtn = $('<button class="close-popup">Close</button>');
+        popup.prepend(closeBtn);
+        
+        // Append to body
+        $('body').append(overlay).append(popup);
+        
+        // Event handlers
+        overlay.on('click', function() {
+            popup.remove();
+            overlay.remove();
+        });
+        
+        closeBtn.on('click', function() {
+            popup.remove();
+            overlay.remove();
+        });
+    }
+
+    /**
      * Populates the feature-to-trim-levels mapping for a given model.
      * @param {string} modelKey - Model key (e.g., 'TERRAIN', 'YUKON')
      * @param {Object} featureToColumnMap - Maps features to CSV column indices
@@ -2118,7 +2376,11 @@ jQuery(document).ready(function($) {
                 populateFeatureTrimLevelsMap('TERRAIN', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 
                 console.log('Building HTML for terrain features...');
-                var html = '<div class="feature-groups">';
+                
+                // Build trim level walk buttons
+                var trimLevelButtons = buildTrimLevelWalkButtons(trimLevels, 'terrain');
+                
+                var html = trimLevelButtons + '<div class="feature-groups">';
                 var globalIndex = 0;
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
@@ -2440,7 +2702,11 @@ function populateSierra1500Features() {
                 populateFeatureTrimLevelsMapSierra('SIERRA1500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
 
                 console.log('Building HTML for sierra1500 features...');
-                var html = '<div class="feature-groups">';
+                
+                // Build trim level walk buttons
+                var trimLevelButtons = buildTrimLevelWalkButtons(trimLevels, 'sierra1500');
+                
+                var html = trimLevelButtons + '<div class="feature-groups">';
                 var globalIndex = 0;
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
@@ -2697,7 +2963,11 @@ function populateSierra2500Features() {
                 populateFeatureTrimLevelsMapSierra('SIERRA2500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
 
                 console.log('Building HTML for sierra2500 features...');
-                var html = '<div class="feature-groups">';
+                
+                // Build trim level walk buttons
+                var trimLevelButtons = buildTrimLevelWalkButtons(trimLevels, 'sierra2500');
+                
+                var html = trimLevelButtons + '<div class="feature-groups">';
                 var globalIndex = 0;
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
@@ -2966,7 +3236,11 @@ function populateAcadiaFeatures() {
                 populateFeatureTrimLevelsMap('ACADIA', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 
                 console.log('Building HTML for acadia features...');
-                var html = '<div class="feature-groups">';
+                
+                // Build trim level walk buttons
+                var trimLevelButtons = buildTrimLevelWalkButtons(trimLevels, 'acadia');
+                
+                var html = trimLevelButtons + '<div class="feature-groups">';
                 var globalIndex = 0;
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
@@ -3297,7 +3571,11 @@ function populateYukonFeatures() {
                 populateFeatureTrimLevelsMap('YUKON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 
                 console.log('Building HTML for yukon features...');
-                var html = '<div class="feature-groups">';
+                
+                // Build trim level walk buttons
+                var trimLevelButtons = buildTrimLevelWalkButtons(trimLevels, 'yukon');
+                
+                var html = trimLevelButtons + '<div class="feature-groups">';
                 var globalIndex = 0;
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
@@ -3617,7 +3895,11 @@ function populateCanyonFeatures() {
                 populateFeatureTrimLevelsMap('CANYON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 
                 console.log('Building HTML for canyon features...');
-                var html = '<div class="feature-groups">';
+                
+                // Build trim level walk buttons
+                var trimLevelButtons = buildTrimLevelWalkButtons(trimLevels, 'canyon');
+                
+                var html = trimLevelButtons + '<div class="feature-groups">';
                 var globalIndex = 0;
                 categories.forEach(function(category) {
                     var catFeatures = featureGroups[category] || [];
@@ -6918,8 +7200,36 @@ function initFormBindings() {
         
         // Initialize collapsible feature group handlers
         initCollapsibleGroupHandlers();
+        
+        // Initialize trim walk handlers
+        initTrimWalkHandlers();
     }
     
+    /**
+     * Initializes event handlers for trim walk buttons
+     */
+    function initTrimWalkHandlers() {
+        // Use event delegation to handle dynamically created trim walk buttons
+        $(document).off('click.trimWalk').on('click.trimWalk', '.trim-walk-btn', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            var button = $(this);
+            var trimLevel = button.data('trim');
+            var modelPrefix = button.data('model');
+            var trimIndex = button.data('index');
+            
+            // Get all trim levels for this model (from the button's parent container)
+            var allTrimLevels = [];
+            button.parent().find('.trim-walk-btn').each(function() {
+                allTrimLevels.push($(this).data('trim'));
+            });
+            
+            // Show the trim walk popup
+            showTrimWalkPopup(trimLevel, modelPrefix, trimIndex, allTrimLevels);
+        });
+    }
+
     /**
      * Initializes event handlers for collapsible feature groups
      */
