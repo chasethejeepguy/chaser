@@ -1826,6 +1826,64 @@ jQuery(document).ready(function($) {
     }
 
     /**
+     * Rebuilds the feature checkboxes with trim level information after trim levels are processed.
+     * @param {Object} featureGroups - Features grouped by category
+     * @param {Array} categories - Category names
+     * @param {jQuery} htmlBlock - HTML block element to update
+     * @param {string} modelPrefix - Model prefix (e.g., 'terrain')
+     */
+    function rebuildCheckboxesWithTrimLevels(featureGroups, categories, htmlBlock, modelPrefix) {
+        console.log('Rebuilding checkboxes with trim level information...');
+        
+        var html = '<div class="feature-groups">';
+        var globalIndex = 0;
+        categories.forEach(function(category) {
+            var catFeatures = featureGroups[category] || [];
+            console.log('Rebuilding HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
+            
+            // Sort features alphabetically within each category
+            catFeatures.sort(function(a, b) {
+                return a.toLowerCase().localeCompare(b.toLowerCase());
+            });
+            
+            html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
+            
+            // Build collapsible groups and regular features
+            var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, modelPrefix, globalIndex);
+            html += categoryHtml.html;
+            globalIndex = categoryHtml.globalIndex;
+            
+            html += '</div></div>';
+        });
+        html += '</div>';
+        
+        console.log('🔨 Rebuilt HTML length:', html.length);
+        console.log('🔨 Total checkboxes recreated:', globalIndex);
+
+        // Replace the HTML content
+        var htmlContent = htmlBlock.html();
+        if (htmlContent.indexOf('{' + modelPrefix + ' feature checkboxes}') !== -1) {
+            htmlContent = htmlContent.replace('{' + modelPrefix + ' feature checkboxes}', html);
+            htmlBlock.html(htmlContent);
+            console.log('✅ Replaced {' + modelPrefix + ' feature checkboxes} placeholder');
+        } else {
+            // If no placeholder found, try to find a suitable container or replace entire content
+            var targetContainer = htmlBlock.find('.ginput_container, .gfield_html_formatted').first();
+            if (targetContainer.length) {
+                console.log('🎯 Found container, replacing its content');
+                targetContainer.html(html);
+                console.log('✅ Replaced content in container');
+            } else {
+                console.log('⚠️ No container found, replacing entire HTML block content');
+                htmlBlock.html(html);
+                console.log('✅ Replaced entire content of HTML block');
+            }
+        }
+
+        console.log('✅ Checkboxes rebuilt with trim level information');
+    }
+
+    /**
      * Populates the feature-to-trim-levels mapping for Sierra models (which have different data structure).
      * @param {string} modelKey - Model key (e.g., 'SIERRA1500', 'SIERRA2500')
      * @param {Object} featureToColumnMap - Maps features to CSV column indices
@@ -2041,32 +2099,9 @@ jQuery(document).ready(function($) {
                     return;
                 }
 
-                console.log('Building HTML for terrain features...');
-                var html = '<div class="feature-groups">';
-                var globalIndex = 0;
-                categories.forEach(function(category) {
-                    var catFeatures = featureGroups[category] || [];
-                    console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
-                    
-                    // Sort features alphabetically within each category
-                    catFeatures.sort(function(a, b) {
-                        return a.toLowerCase().localeCompare(b.toLowerCase());
-                    });
-                    
-                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
-                    
-                    // Build collapsible groups and regular features
-                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'terrain', globalIndex);
-                    html += categoryHtml.html;
-                    globalIndex = categoryHtml.globalIndex;
-                    
-                    html += '</div></div>';
-                });
-                html += '</div>';
-                
-                console.log('🔨 Generated HTML length:', html.length);
-                console.log('🔨 Generated HTML preview:', html.substring(0, 300));
-                console.log('🔨 Total checkboxes to create:', globalIndex);
+                console.log('Skipping initial checkbox building - will be done after trim levels are processed...');
+                // Checkboxes will be built in processTerrainTrimLevels after trim level mapping is populated
+                var html = '<div class="feature-groups"><p>Loading features with trim level information...</p></div>';
 
                 // COMPREHENSIVE DEBUG: Check HTML block state
                 console.log('🔍 HTML BLOCK DEBUG BEFORE REPLACEMENT:');
@@ -2316,30 +2351,9 @@ function populateSierra1500Features() {
                     return;
                 }
 
-                console.log('Building HTML for sierra1500 features...');
-                var html = '<div class="feature-groups">';
-                var globalIndex = 0;
-                categories.forEach(function(category) {
-                    var catFeatures = featureGroups[category] || [];
-                    console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
-                    
-                    // Sort features alphabetically within each category
-                    catFeatures.sort(function(a, b) {
-                        return a.toLowerCase().localeCompare(b.toLowerCase());
-                    });
-                    
-                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
-                    
-                    // Build collapsible groups and regular features
-                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'sierra1500', globalIndex);
-                    html += categoryHtml.html;
-                    globalIndex = categoryHtml.globalIndex;
-                    html += '</div></div>';
-                });
-                html += '</div>';
-
-                console.log('Generated HTML length:', html.length);
-                console.log('HTML preview (first 500 chars):', html.substring(0, 500));
+                console.log('Skipping initial checkbox building for sierra1500 - will be done after trim levels are processed...');
+                // Checkboxes will be built in processSierra1500TrimLevels after trim level mapping is populated
+                var html = '<div class="feature-groups"><p>Loading features with trim level information...</p></div>';
 
                 // Replace the placeholder in the HTML block
                 var currentHtml = htmlBlock.html();
@@ -2526,22 +2540,9 @@ function populateSierra2500Features() {
                     featureGroups[currentCategory] = features;
                 }
 
-                console.log('Building HTML for sierra2500 features...');
-                var html = '<div class="feature-groups">';
-                var globalIndex = 0;
-                categories.forEach(function(category) {
-                    var catFeatures = featureGroups[category] || [];
-                    catFeatures.sort(function(a, b) {
-                        return a.toLowerCase().localeCompare(b.toLowerCase());
-                    });
-                    
-                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
-                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'sierra2500', globalIndex);
-                    html += categoryHtml.html;
-                    globalIndex = categoryHtml.globalIndex;
-                    html += '</div></div>';
-                });
-                html += '</div>';
+                console.log('Skipping initial checkbox building for sierra2500 - will be done after trim levels are processed...');
+                // Checkboxes will be built in processSierra2500TrimLevels after trim level mapping is populated
+                var html = '<div class="feature-groups"><p>Loading features with trim level information...</p></div>';
 
                 // Replace the placeholder in the HTML block
                 var currentHtml = htmlBlock.html();
@@ -2740,32 +2741,9 @@ function populateAcadiaFeatures() {
                     return;
                 }
 
-                console.log('Building HTML for acadia features...');
-                var html = '<div class="feature-groups">';
-                var globalIndex = 0;
-                categories.forEach(function(category) {
-                    var catFeatures = featureGroups[category] || [];
-                    console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
-                    
-                    // Sort features alphabetically within each category
-                    catFeatures.sort(function(a, b) {
-                        return a.toLowerCase().localeCompare(b.toLowerCase());
-                    });
-                    
-                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
-                    
-                    // Build collapsible groups and regular features
-                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'acadia', globalIndex);
-                    html += categoryHtml.html;
-                    globalIndex = categoryHtml.globalIndex;
-                    
-                    html += '</div></div>';
-                });
-                html += '</div>';
-                
-                console.log('🔨 Generated HTML length:', html.length);
-                console.log('🔨 Generated HTML preview:', html.substring(0, 300));
-                console.log('🔨 Total checkboxes to create:', globalIndex);
+                console.log('Skipping initial checkbox building for acadia - will be done after trim levels are processed...');
+                // Checkboxes will be built in processAcadiaTrimLevels after trim level mapping is populated
+                var html = '<div class="feature-groups"><p>Loading features with trim level information...</p></div>';
 
                 // COMPREHENSIVE DEBUG: Check HTML block state
                 console.log('🔍 HTML BLOCK DEBUG BEFORE REPLACEMENT:');
@@ -3016,32 +2994,9 @@ function populateYukonFeatures() {
                     return;
                 }
 
-                console.log('Building HTML for yukon features...');
-                var html = '<div class="feature-groups">';
-                var globalIndex = 0;
-                categories.forEach(function(category) {
-                    var catFeatures = featureGroups[category] || [];
-                    console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
-                    
-                    // Sort features alphabetically within each category
-                    catFeatures.sort(function(a, b) {
-                        return a.toLowerCase().localeCompare(b.toLowerCase());
-                    });
-                    
-                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
-                    
-                    // Build collapsible groups and regular features
-                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'yukon', globalIndex);
-                    html += categoryHtml.html;
-                    globalIndex = categoryHtml.globalIndex;
-                    
-                    html += '</div></div>';
-                });
-                html += '</div>';
-                
-                console.log('🔨 Generated HTML length:', html.length);
-                console.log('🔨 Generated HTML preview:', html.substring(0, 300));
-                console.log('🔨 Total checkboxes to create:', globalIndex);
+                console.log('Skipping initial checkbox building for yukon - will be done after trim levels are processed...');
+                // Checkboxes will be built in processYukonTrimLevels after trim level mapping is populated
+                var html = '<div class="feature-groups"><p>Loading features with trim level information...</p></div>';
 
                 // COMPREHENSIVE DEBUG: Check HTML block state
                 console.log('🔍 HTML BLOCK DEBUG BEFORE REPLACEMENT:');
@@ -3281,32 +3236,9 @@ function populateCanyonFeatures() {
                     return;
                 }
 
-                console.log('Building HTML for canyon features...');
-                var html = '<div class="feature-groups">';
-                var globalIndex = 0;
-                categories.forEach(function(category) {
-                    var catFeatures = featureGroups[category] || [];
-                    console.log('Building HTML for category: ' + category + ' with ' + catFeatures.length + ' features');
-                    
-                    // Sort features alphabetically within each category
-                    catFeatures.sort(function(a, b) {
-                        return a.toLowerCase().localeCompare(b.toLowerCase());
-                    });
-                    
-                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
-                    
-                    // Build collapsible groups and regular features
-                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'canyon', globalIndex);
-                    html += categoryHtml.html;
-                    globalIndex = categoryHtml.globalIndex;
-                    
-                    html += '</div></div>';
-                });
-                html += '</div>';
-                
-                console.log('🔨 Generated HTML length:', html.length);
-                console.log('🔨 Generated HTML preview:', html.substring(0, 300));
-                console.log('🔨 Total checkboxes to create:', globalIndex);
+                console.log('Skipping initial checkbox building for canyon - will be done after trim levels are processed...');
+                // Checkboxes will be built in processCanyonTrimLevels after trim level mapping is populated
+                var html = '<div class="feature-groups"><p>Loading features with trim level information...</p></div>';
 
                 // COMPREHENSIVE DEBUG: Check HTML block state
                 console.log('🔍 HTML BLOCK DEBUG BEFORE REPLACEMENT:');
@@ -3664,6 +3596,40 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMap('TERRAIN', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+		
+		// Recreate featureGroups from CSV data for checkbox rebuilding
+		var featureGroups = {};
+		var currentCategory = null;
+		var features = [];
+
+		csvData.forEach(function(row, rowIndex) {
+			if (row.length > 0) {
+				var firstCell = row[0] ? row[0].trim() : '';
+				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+					if (currentCategory && features.length > 0) {
+						featureGroups[currentCategory] = features;
+					}
+					currentCategory = firstCell.match(/\{(.+)\}/)[1];
+					// Clean up features by removing extra quotes and trimming
+					features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+						// Remove surrounding quotes if present
+						var cleaned = f.trim();
+						if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+							cleaned = cleaned.slice(1, -1);
+						}
+						// Handle double quotes inside the string (CSV escape format)
+						cleaned = cleaned.replace(/""/g, '"');
+						return cleaned;
+					});
+				}
+			}
+		});
+		if (currentCategory && features.length > 0) {
+			featureGroups[currentCategory] = features;
+		}
+		
+		// Rebuild checkboxes with trim level information
+		rebuildCheckboxesWithTrimLevels(featureGroups, categories, htmlBlock, 'terrain');
 	}
 
 
@@ -3899,6 +3865,40 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMap('YUKON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+		
+		// Recreate featureGroups from CSV data for checkbox rebuilding
+		var featureGroups = {};
+		var currentCategory = null;
+		var features = [];
+
+		csvData.forEach(function(row, rowIndex) {
+			if (row.length > 0) {
+				var firstCell = row[0] ? row[0].trim() : '';
+				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+					if (currentCategory && features.length > 0) {
+						featureGroups[currentCategory] = features;
+					}
+					currentCategory = firstCell.match(/\{(.+)\}/)[1];
+					// Clean up features by removing extra quotes and trimming
+					features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+						// Remove surrounding quotes if present
+						var cleaned = f.trim();
+						if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+							cleaned = cleaned.slice(1, -1);
+						}
+						// Handle double quotes inside the string (CSV escape format)
+						cleaned = cleaned.replace(/""/g, '"');
+						return cleaned;
+					});
+				}
+			}
+		});
+		if (currentCategory && features.length > 0) {
+			featureGroups[currentCategory] = features;
+		}
+		
+		// Rebuild checkboxes with trim level information
+		rebuildCheckboxesWithTrimLevels(featureGroups, categories, htmlBlock, 'yukon');
 	}
 
 	function processCanyonTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
@@ -4075,6 +4075,40 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMap('CANYON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+		
+		// Recreate featureGroups from CSV data for checkbox rebuilding
+		var featureGroups = {};
+		var currentCategory = null;
+		var features = [];
+
+		csvData.forEach(function(row, rowIndex) {
+			if (row.length > 0) {
+				var firstCell = row[0] ? row[0].trim() : '';
+				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+					if (currentCategory && features.length > 0) {
+						featureGroups[currentCategory] = features;
+					}
+					currentCategory = firstCell.match(/\{(.+)\}/)[1];
+					// Clean up features by removing extra quotes and trimming
+					features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+						// Remove surrounding quotes if present
+						var cleaned = f.trim();
+						if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+							cleaned = cleaned.slice(1, -1);
+						}
+						// Handle double quotes inside the string (CSV escape format)
+						cleaned = cleaned.replace(/""/g, '"');
+						return cleaned;
+					});
+				}
+			}
+		});
+		if (currentCategory && features.length > 0) {
+			featureGroups[currentCategory] = features;
+		}
+		
+		// Rebuild checkboxes with trim level information
+		rebuildCheckboxesWithTrimLevels(featureGroups, categories, htmlBlock, 'canyon');
 		
 		// Update the HTML block with trim level replacement (field 69)
 		var defaultText = 'Wonderful, it sounds like the {TRIM LEVELS} would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
@@ -4344,6 +4378,40 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMap('ACADIA', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+		
+		// Recreate featureGroups from CSV data for checkbox rebuilding
+		var featureGroups = {};
+		var currentCategory = null;
+		var features = [];
+
+		csvData.forEach(function(row, rowIndex) {
+			if (row.length > 0) {
+				var firstCell = row[0] ? row[0].trim() : '';
+				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+					if (currentCategory && features.length > 0) {
+						featureGroups[currentCategory] = features;
+					}
+					currentCategory = firstCell.match(/\{(.+)\}/)[1];
+					// Clean up features by removing extra quotes and trimming
+					features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+						// Remove surrounding quotes if present
+						var cleaned = f.trim();
+						if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+							cleaned = cleaned.slice(1, -1);
+						}
+						// Handle double quotes inside the string (CSV escape format)
+						cleaned = cleaned.replace(/""/g, '"');
+						return cleaned;
+					});
+				}
+			}
+		});
+		if (currentCategory && features.length > 0) {
+			featureGroups[currentCategory] = features;
+		}
+		
+		// Rebuild checkboxes with trim level information
+		rebuildCheckboxesWithTrimLevels(featureGroups, categories, htmlBlock, 'acadia');
 	}
 
 	function processSierra1500TrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
@@ -4488,6 +4556,40 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMapSierra('SIERRA1500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
+		
+		// Recreate featureGroups from CSV data for checkbox rebuilding
+		var featureGroups = {};
+		var currentCategory = null;
+		var features = [];
+
+		csvData.forEach(function(row, rowIndex) {
+			if (row.length > 0) {
+				var firstCell = row[0] ? row[0].trim() : '';
+				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+					if (currentCategory && features.length > 0) {
+						featureGroups[currentCategory] = features;
+					}
+					currentCategory = firstCell.match(/\{(.+)\}/)[1];
+					// Clean up features by removing extra quotes and trimming
+					features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+						// Remove surrounding quotes if present
+						var cleaned = f.trim();
+						if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+							cleaned = cleaned.slice(1, -1);
+						}
+						// Handle double quotes inside the string (CSV escape format)
+						cleaned = cleaned.replace(/""/g, '"');
+						return cleaned;
+					});
+				}
+			}
+		});
+		if (currentCategory && features.length > 0) {
+			featureGroups[currentCategory] = features;
+		}
+		
+		// Rebuild checkboxes with trim level information
+		rebuildCheckboxesWithTrimLevels(featureGroups, categories, htmlBlock, 'sierra1500');
 	}
 
 	function processSierra2500TrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
@@ -4631,6 +4733,40 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMapSierra('SIERRA2500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
+		
+		// Recreate featureGroups from CSV data for checkbox rebuilding
+		var featureGroups = {};
+		var currentCategory = null;
+		var features = [];
+
+		csvData.forEach(function(row, rowIndex) {
+			if (row.length > 0) {
+				var firstCell = row[0] ? row[0].trim() : '';
+				if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+					if (currentCategory && features.length > 0) {
+						featureGroups[currentCategory] = features;
+					}
+					currentCategory = firstCell.match(/\{(.+)\}/)[1];
+					// Clean up features by removing extra quotes and trimming
+					features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+						// Remove surrounding quotes if present
+						var cleaned = f.trim();
+						if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+							cleaned = cleaned.slice(1, -1);
+						}
+						// Handle double quotes inside the string (CSV escape format)
+						cleaned = cleaned.replace(/""/g, '"');
+						return cleaned;
+					});
+				}
+			}
+		});
+		if (currentCategory && features.length > 0) {
+			featureGroups[currentCategory] = features;
+		}
+		
+		// Rebuild checkboxes with trim level information
+		rebuildCheckboxesWithTrimLevels(featureGroups, categories, htmlBlock, 'sierra2500');
 	}
 
 	function updateTrimLevels(model) {
