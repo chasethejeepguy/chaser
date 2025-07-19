@@ -2043,6 +2043,61 @@ jQuery(document).ready(function($) {
                     return;
                 }
 
+                // Populate trim level mapping from CSV data before building checkboxes
+                console.log('Populating trim level mapping for terrain features...');
+                var trimLevels = ['ELEVATION', 'AT4', 'DENALI'];
+                var featureToColumnMap = {};
+                var featureToCategoryMap = {};
+                var trimLevelRows = {};
+                var trimLevelRowsByCategory = {};
+                
+                // Parse CSV data to create feature-to-column mapping and find trim level data
+                results.data.forEach(function(row, rowIndex) {
+                    if (row.length > 0) {
+                        var firstCell = row[0] ? row[0].trim() : '';
+                        if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+                            var category = firstCell.match(/\{(.+)\}/)[1];
+                            var features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                var cleaned = f.trim();
+                                if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                    cleaned = cleaned.slice(1, -1);
+                                }
+                                cleaned = cleaned.replace(/""/g, '"');
+                                return cleaned;
+                            });
+                            
+                            // Map features to their column indices and categories
+                            features.forEach(function(feature, index) {
+                                featureToColumnMap[feature] = index + 1; // +1 because first column is category header
+                                featureToCategoryMap[feature] = category;
+                            });
+                        } else if (trimLevels.indexOf(firstCell) !== -1) {
+                            // This is a trim level row
+                            trimLevelRows[firstCell] = row;
+                            
+                            // Also organize by category if we can determine it
+                            var currentCategory = null;
+                            for (var i = rowIndex - 1; i >= 0; i--) {
+                                var prevRow = results.data[i];
+                                if (prevRow && prevRow[0] && prevRow[0].startsWith('TRIM LEVELS FOR {')) {
+                                    currentCategory = prevRow[0].match(/\{(.+)\}/)[1];
+                                    break;
+                                }
+                            }
+                            
+                            if (currentCategory) {
+                                if (!trimLevelRowsByCategory[currentCategory]) {
+                                    trimLevelRowsByCategory[currentCategory] = {};
+                                }
+                                trimLevelRowsByCategory[currentCategory][firstCell] = row;
+                            }
+                        }
+                    }
+                });
+                
+                // Now populate the feature-to-trim-levels mapping
+                populateFeatureTrimLevelsMap('TERRAIN', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+
                 console.log('Building HTML for terrain features...');
                 var html = '<div class="feature-groups">';
                 var globalIndex = 0;
@@ -2318,6 +2373,53 @@ function populateSierra1500Features() {
                     return;
                 }
 
+                // Populate trim level mapping from CSV data before building checkboxes
+                console.log('Populating trim level mapping for sierra1500 features...');
+                var trimLevels = ['PRO', 'SLE', 'ELEVATION', 'SLT', 'AT4', 'DENALI', 'AT4X', 'DENALI ULTIMATE'];
+                var featureToColumnMap = {};
+                var featureToCategoryMap = {};
+                var trimLevelRowsByCategory = {};
+                
+                // Parse CSV data to create feature-to-column mapping and find trim level data (Sierra structure)
+                var currentCategory = null;
+                results.data.forEach(function(row, rowIndex) {
+                    if (row && row.length > 0) {
+                        var firstCell = row[0];
+                        
+                        // Check if this is a category header
+                        if (firstCell && firstCell.includes('TRIM LEVELS FOR {')) {
+                            currentCategory = categories.find(function(cat) {
+                                return firstCell.includes(cat);
+                            });
+                            
+                            if (currentCategory) {
+                                trimLevelRowsByCategory[currentCategory] = {};
+                                
+                                // Map features to column indices
+                                var features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                    var cleaned = f.trim();
+                                    if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                        cleaned = cleaned.slice(1, -1);
+                                    }
+                                    cleaned = cleaned.replace(/""/g, '"');
+                                    return cleaned;
+                                });
+                                
+                                features.forEach(function(feature, index) {
+                                    featureToColumnMap[feature] = index + 1;
+                                    featureToCategoryMap[feature] = currentCategory;
+                                });
+                            }
+                        } else if (currentCategory && trimLevels.indexOf(firstCell) !== -1) {
+                            // This is a trim level row for the current category
+                            trimLevelRowsByCategory[currentCategory][firstCell] = row;
+                        }
+                    }
+                });
+                
+                // Now populate the feature-to-trim-levels mapping using Sierra function
+                populateFeatureTrimLevelsMapSierra('SIERRA1500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
+
                 console.log('Building HTML for sierra1500 features...');
                 var html = '<div class="feature-groups">';
                 var globalIndex = 0;
@@ -2527,6 +2629,53 @@ function populateSierra2500Features() {
                 if (currentCategory && features.length > 0) {
                     featureGroups[currentCategory] = features;
                 }
+
+                // Populate trim level mapping from CSV data before building checkboxes
+                console.log('Populating trim level mapping for sierra2500 features...');
+                var trimLevels = ['PRO', 'SLE', 'ELEVATION', 'SLT', 'AT4', 'DENALI', 'AT4X', 'DENALI ULTIMATE'];
+                var featureToColumnMap = {};
+                var featureToCategoryMap = {};
+                var trimLevelRowsByCategory = {};
+                
+                // Parse CSV data to create feature-to-column mapping and find trim level data (Sierra structure)
+                var currentCategory = null;
+                results.data.forEach(function(row, rowIndex) {
+                    if (row && row.length > 0) {
+                        var firstCell = row[0];
+                        
+                        // Check if this is a category header
+                        if (firstCell && firstCell.includes('TRIM LEVELS FOR {')) {
+                            currentCategory = categories.find(function(cat) {
+                                return firstCell.includes(cat);
+                            });
+                            
+                            if (currentCategory) {
+                                trimLevelRowsByCategory[currentCategory] = {};
+                                
+                                // Map features to column indices
+                                var features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                    var cleaned = f.trim();
+                                    if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                        cleaned = cleaned.slice(1, -1);
+                                    }
+                                    cleaned = cleaned.replace(/""/g, '"');
+                                    return cleaned;
+                                });
+                                
+                                features.forEach(function(feature, index) {
+                                    featureToColumnMap[feature] = index + 1;
+                                    featureToCategoryMap[feature] = currentCategory;
+                                });
+                            }
+                        } else if (currentCategory && trimLevels.indexOf(firstCell) !== -1) {
+                            // This is a trim level row for the current category
+                            trimLevelRowsByCategory[currentCategory][firstCell] = row;
+                        }
+                    }
+                });
+                
+                // Now populate the feature-to-trim-levels mapping using Sierra function
+                populateFeatureTrimLevelsMapSierra('SIERRA2500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
 
                 console.log('Building HTML for sierra2500 features...');
                 var html = '<div class="feature-groups">';
@@ -2741,6 +2890,61 @@ function populateAcadiaFeatures() {
                     console.error('Found categories:', Object.keys(featureGroups));
                     return;
                 }
+
+                // Populate trim level mapping from CSV data before building checkboxes
+                console.log('Populating trim level mapping for acadia features...');
+                var trimLevels = ['ELEVATION', 'AT4', 'DENALI'];
+                var featureToColumnMap = {};
+                var featureToCategoryMap = {};
+                var trimLevelRows = {};
+                var trimLevelRowsByCategory = {};
+                
+                // Parse CSV data to create feature-to-column mapping and find trim level data
+                results.data.forEach(function(row, rowIndex) {
+                    if (row.length > 0) {
+                        var firstCell = row[0] ? row[0].trim() : '';
+                        if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+                            var category = firstCell.match(/\{(.+)\}/)[1];
+                            var features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                var cleaned = f.trim();
+                                if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                    cleaned = cleaned.slice(1, -1);
+                                }
+                                cleaned = cleaned.replace(/""/g, '"');
+                                return cleaned;
+                            });
+                            
+                            // Map features to their column indices and categories
+                            features.forEach(function(feature, index) {
+                                featureToColumnMap[feature] = index + 1; // +1 because first column is category header
+                                featureToCategoryMap[feature] = category;
+                            });
+                        } else if (trimLevels.indexOf(firstCell) !== -1) {
+                            // This is a trim level row
+                            trimLevelRows[firstCell] = row;
+                            
+                            // Also organize by category if we can determine it
+                            var currentCategory = null;
+                            for (var i = rowIndex - 1; i >= 0; i--) {
+                                var prevRow = results.data[i];
+                                if (prevRow && prevRow[0] && prevRow[0].startsWith('TRIM LEVELS FOR {')) {
+                                    currentCategory = prevRow[0].match(/\{(.+)\}/)[1];
+                                    break;
+                                }
+                            }
+                            
+                            if (currentCategory) {
+                                if (!trimLevelRowsByCategory[currentCategory]) {
+                                    trimLevelRowsByCategory[currentCategory] = {};
+                                }
+                                trimLevelRowsByCategory[currentCategory][firstCell] = row;
+                            }
+                        }
+                    }
+                });
+                
+                // Now populate the feature-to-trim-levels mapping
+                populateFeatureTrimLevelsMap('ACADIA', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 
                 console.log('Building HTML for acadia features...');
                 var html = '<div class="feature-groups">';
@@ -3018,6 +3222,61 @@ function populateYukonFeatures() {
                     return;
                 }
 
+                // Populate trim level mapping from CSV data before building checkboxes
+                console.log('Populating trim level mapping for yukon features...');
+                var trimLevels = ['SLE', 'ELEVATION', 'AT4', 'SLT', 'DENALI'];
+                var featureToColumnMap = {};
+                var featureToCategoryMap = {};
+                var trimLevelRows = {};
+                var trimLevelRowsByCategory = {};
+                
+                // Parse CSV data to create feature-to-column mapping and find trim level data
+                results.data.forEach(function(row, rowIndex) {
+                    if (row.length > 0) {
+                        var firstCell = row[0] ? row[0].trim() : '';
+                        if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+                            var category = firstCell.match(/\{(.+)\}/)[1];
+                            var features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                var cleaned = f.trim();
+                                if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                    cleaned = cleaned.slice(1, -1);
+                                }
+                                cleaned = cleaned.replace(/""/g, '"');
+                                return cleaned;
+                            });
+                            
+                            // Map features to their column indices and categories
+                            features.forEach(function(feature, index) {
+                                featureToColumnMap[feature] = index + 1; // +1 because first column is category header
+                                featureToCategoryMap[feature] = category;
+                            });
+                        } else if (trimLevels.indexOf(firstCell) !== -1) {
+                            // This is a trim level row
+                            trimLevelRows[firstCell] = row;
+                            
+                            // Also organize by category if we can determine it
+                            var currentCategory = null;
+                            for (var i = rowIndex - 1; i >= 0; i--) {
+                                var prevRow = results.data[i];
+                                if (prevRow && prevRow[0] && prevRow[0].startsWith('TRIM LEVELS FOR {')) {
+                                    currentCategory = prevRow[0].match(/\{(.+)\}/)[1];
+                                    break;
+                                }
+                            }
+                            
+                            if (currentCategory) {
+                                if (!trimLevelRowsByCategory[currentCategory]) {
+                                    trimLevelRowsByCategory[currentCategory] = {};
+                                }
+                                trimLevelRowsByCategory[currentCategory][firstCell] = row;
+                            }
+                        }
+                    }
+                });
+                
+                // Now populate the feature-to-trim-levels mapping
+                populateFeatureTrimLevelsMap('YUKON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+
                 console.log('Building HTML for yukon features...');
                 var html = '<div class="feature-groups">';
                 var globalIndex = 0;
@@ -3282,6 +3541,61 @@ function populateCanyonFeatures() {
                     console.error('Found categories:', Object.keys(featureGroups));
                     return;
                 }
+
+                // Populate trim level mapping from CSV data before building checkboxes
+                console.log('Populating trim level mapping for canyon features...');
+                var trimLevels = ['ELEVATION STANDARD', 'ELEVATION', 'AT4', 'AT4X', 'DENALI'];
+                var featureToColumnMap = {};
+                var featureToCategoryMap = {};
+                var trimLevelRows = {};
+                var trimLevelRowsByCategory = {};
+                
+                // Parse CSV data to create feature-to-column mapping and find trim level data
+                results.data.forEach(function(row, rowIndex) {
+                    if (row.length > 0) {
+                        var firstCell = row[0] ? row[0].trim() : '';
+                        if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+                            var category = firstCell.match(/\{(.+)\}/)[1];
+                            var features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                var cleaned = f.trim();
+                                if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                    cleaned = cleaned.slice(1, -1);
+                                }
+                                cleaned = cleaned.replace(/""/g, '"');
+                                return cleaned;
+                            });
+                            
+                            // Map features to their column indices and categories
+                            features.forEach(function(feature, index) {
+                                featureToColumnMap[feature] = index + 1; // +1 because first column is category header
+                                featureToCategoryMap[feature] = category;
+                            });
+                        } else if (trimLevels.indexOf(firstCell) !== -1) {
+                            // This is a trim level row
+                            trimLevelRows[firstCell] = row;
+                            
+                            // Also organize by category if we can determine it
+                            var currentCategory = null;
+                            for (var i = rowIndex - 1; i >= 0; i--) {
+                                var prevRow = results.data[i];
+                                if (prevRow && prevRow[0] && prevRow[0].startsWith('TRIM LEVELS FOR {')) {
+                                    currentCategory = prevRow[0].match(/\{(.+)\}/)[1];
+                                    break;
+                                }
+                            }
+                            
+                            if (currentCategory) {
+                                if (!trimLevelRowsByCategory[currentCategory]) {
+                                    trimLevelRowsByCategory[currentCategory] = {};
+                                }
+                                trimLevelRowsByCategory[currentCategory][firstCell] = row;
+                            }
+                        }
+                    }
+                });
+                
+                // Now populate the feature-to-trim-levels mapping
+                populateFeatureTrimLevelsMap('CANYON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 
                 console.log('Building HTML for canyon features...');
                 var html = '<div class="feature-groups">';
