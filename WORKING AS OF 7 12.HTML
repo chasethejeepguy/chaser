@@ -683,6 +683,8 @@ jQuery(document).ready(function($) {
     var canyonHtmlBlockFieldId = 140;
     var sierra1500CheckboxFieldId = 141;
     var sierra1500HtmlBlockFieldId = 141;
+    var sierra2500CheckboxFieldId = 142;
+    var sierra2500HtmlBlockFieldId = 142;
 
     // Global variables
     var vehicleData = null;
@@ -698,6 +700,7 @@ jQuery(document).ready(function($) {
     var yukonPopulated = false;
     var canyonPopulated = false;
     var sierra1500Populated = false;
+    var sierra2500Populated = false;
     
     // Function to find best description match with fuzzy matching for typos
     function findBestDescriptionMatch(searchFeature, descriptionMap) {
@@ -771,10 +774,32 @@ jQuery(document).ready(function($) {
             }
         }
         
+        // Sierra 2500-specific feature normalization
+        if (descriptionMap === sierra2500FeatureDescriptions) {
+            // Normalize common Sierra 2500 feature variations
+            var sierra2500Normalizations = {
+                'WIRELESS APPLE CAR PLAY AND WIRELESS ANDROID AUTO CAPABILITY FOR COMPATIBLE PHONES': 'WIRELESS APPLE CARPLAY AND WIRELESS ANDROID AUTO CAPABILITY FOR COMPATIBLE PHONES',
+                'OUTSIDE POWER ADJUSTABLE VERTICAL TRAILERING MIRROS WITH HEATED UPPER GLASS': 'OUTSIDE POWER ADJUSTABLE VERTICAL TRAILERING MIRRORS WITH HEATED UPPER GLASS',
+                '18 INCH GLOSS BLACK ALUMINUM WHEELS IWTH LASER ETCHING AND AEV BRANDED CENTER CAP': '18 INCH GLOSS BLACK ALUMINUM WHEELS WITH LASER ETCHING AND AEV BRANDED CENTER CAP',
+                'HEATED DRIVER AND FRONT OUTBOARD PASSENGER SEATS': 'HEATED DRIVER AND FRONT OUTBOARD PASSENGER SEATS',
+                'JET BLACK PERFORATED LEATHER APPOINTED FRONT OUTBOARD SEATING POSITIONS': 'JET BLACK PERFORATED LEATHER APPOINTED FRONT OUTBOARD SEATING POSITIONS',
+                'STABILITRAK ELECTRONIC STABILITY CONTROL SYSTEM WITH TRACTION CONTROL': 'STABILITRAK ELECTRONIC STABILITY CONTROL SYSTEM WITH TRACTION CONTROL'
+            };
+            
+            if (sierra2500Normalizations[correctedFeature]) {
+                correctedFeature = sierra2500Normalizations[correctedFeature];
+                console.log('🔧 Sierra 2500 feature normalized:', searchFeature, '->', correctedFeature);
+                if (descriptionMap[correctedFeature]) {
+                    console.log('✅ Direct match found after Sierra 2500 normalization');
+                    return descriptionMap[correctedFeature];
+                }
+            }
+        }
+        
         var bestMatch = null;
         var highestSimilarity = 0;
-        // Use lower threshold for Canyon and Sierra 1500 descriptions (0.4 vs 0.7)
-        var threshold = (descriptionMap === canyonFeatureDescriptions || descriptionMap === sierra1500FeatureDescriptions) ? 0.4 : 0.7;
+        // Use lower threshold for Canyon, Sierra 1500, and Sierra 2500 descriptions (0.4 vs 0.7)
+        var threshold = (descriptionMap === canyonFeatureDescriptions || descriptionMap === sierra1500FeatureDescriptions || descriptionMap === sierra2500FeatureDescriptions) ? 0.4 : 0.7;
         
         for (var key in descriptionMap) {
             var similarity = calculateSimilarity(correctedFeature, key);
@@ -787,9 +812,9 @@ jQuery(document).ready(function($) {
             }
         }
         
-        // If no match found for Canyon or Sierra 1500 and threshold was lowered, try partial word matching
-        if (!bestMatch && (descriptionMap === canyonFeatureDescriptions || descriptionMap === sierra1500FeatureDescriptions)) {
-            var modelName = descriptionMap === canyonFeatureDescriptions ? 'Canyon' : 'Sierra 1500';
+        // If no match found for Canyon, Sierra 1500, or Sierra 2500 and threshold was lowered, try partial word matching
+        if (!bestMatch && (descriptionMap === canyonFeatureDescriptions || descriptionMap === sierra1500FeatureDescriptions || descriptionMap === sierra2500FeatureDescriptions)) {
+            var modelName = descriptionMap === canyonFeatureDescriptions ? 'Canyon' : (descriptionMap === sierra1500FeatureDescriptions ? 'Sierra 1500' : 'Sierra 2500');
             console.log('🔍 Trying partial word matching for ' + modelName + ' feature:', correctedFeature);
             var featureWords = correctedFeature.split(' ').filter(function(w) { return w.length > 3; });
             
@@ -885,7 +910,8 @@ jQuery(document).ready(function($) {
         'ACADIA': { fieldId: acadiaCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/acadia.csv', modelFilter: 'Acadia', isGmc: true },
         'YUKON': { fieldId: yukonCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/yukon.csv', modelFilter: 'Yukon', isGmc: true },
         'CANYON': { fieldId: canyonCheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/canyon.csv', modelFilter: 'Canyon', isGmc: true },
-        'SIERRA 1500': { fieldId: sierra1500CheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/sierra1500.csv', modelFilter: 'Sierra 1500', isGmc: true }
+        'SIERRA 1500': { fieldId: sierra1500CheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/sierra1500.csv', modelFilter: 'Sierra 1500', isGmc: true },
+        'SIERRA 2500': { fieldId: sierra2500CheckboxFieldId, csvUrl: 'https://hutchinsonautoteam.com/gmcmodels/sierra2500.csv', modelFilter: 'Sierra 2500', isGmc: true }
     };
 
     // Email mappings
@@ -1205,6 +1231,9 @@ jQuery(document).ready(function($) {
     // Global variable for Sierra 1500 feature descriptions
     var sierra1500FeatureDescriptions = {};
     
+    // Global variable for Sierra 2500 feature descriptions
+    var sierra2500FeatureDescriptions = {};
+    
     // Load Canyon feature descriptions
     function loadCanyonFeatureDescriptions() {
         var canyonDescriptionsUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmccanyondescriptions.csv';
@@ -1332,6 +1361,71 @@ jQuery(document).ready(function($) {
         }).catch(function(error) {
             console.error('Fetch error for GMC Sierra 1500 Feature Descriptions:', error.message);
             sierra1500FeatureDescriptions = {};
+        });
+    }
+
+    // Load Sierra 2500 feature descriptions
+    function loadSierra2500FeatureDescriptions() {
+        var sierra2500DescriptionsUrl = 'https://hutchinsonautoteam.com/gmcmodels/gmcsierra2500descriptions.csv';
+        console.log('Loading Sierra 2500 feature descriptions from:', sierra2500DescriptionsUrl);
+        
+        fetch(sierra2500DescriptionsUrl)
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.text();
+        })
+        .then(function(csvText) {
+            console.log('Raw Sierra 2500 descriptions CSV:', csvText);
+            console.log('Raw Sierra 2500 descriptions CSV length:', csvText.length);
+            console.log('Raw Sierra 2500 descriptions CSV preview (first 500 chars):', csvText.substring(0, 500));
+            
+            sierra2500FeatureDescriptions = {};
+            
+            // Parse CSV text line by line
+            var lines = csvText.split('\n');
+            console.log('Sierra 2500 descriptions total lines:', lines.length);
+            
+            lines.forEach(function(line, index) {
+                if (line.trim() && line.includes('{') && line.includes('}') && line.includes(':')) {
+                    console.log('Processing Sierra 2500 description line', index, ':', line.substring(0, 100) + '...');
+                    
+                    // Find the closing brace
+                    var closingBraceIndex = line.indexOf('}');
+                    if (closingBraceIndex !== -1) {
+                        var content = line.substring(1, closingBraceIndex);
+                        var colonIndex = content.indexOf(':');
+                        
+                        if (colonIndex !== -1) {
+                            var feature = content.substring(0, colonIndex).trim();
+                            var description = content.substring(colonIndex + 1).trim();
+                            
+                            if (feature && description) {
+                                sierra2500FeatureDescriptions[feature.toUpperCase()] = description;
+                                console.log('Added Sierra 2500 description:', feature.toUpperCase(), '=', description.substring(0, 100) + '...');
+                            }
+                        }
+                    }
+                }
+            });
+            
+            console.log('Parsed Sierra 2500 feature descriptions:', sierra2500FeatureDescriptions);
+            console.log('Total Sierra 2500 descriptions loaded:', Object.keys(sierra2500FeatureDescriptions).length);
+            
+            if (Object.keys(sierra2500FeatureDescriptions).length === 0) {
+                console.warn('WARNING: No Sierra 2500 feature descriptions loaded!');
+                console.warn('Sample lines from Sierra 2500 descriptions CSV:');
+                lines.slice(0, 5).forEach(function(line, index) {
+                    console.warn('Line', index, ':', line);
+                });
+            } else {
+                console.log('SUCCESS: GMC Sierra 2500 descriptions loaded successfully!');
+                console.log('First few Sierra 2500 descriptions:', Object.keys(sierra2500FeatureDescriptions).slice(0, 5));
+            }
+        }).catch(function(error) {
+            console.error('Fetch error for GMC Sierra 2500 Feature Descriptions:', error.message);
+            sierra2500FeatureDescriptions = {};
         });
     }
 
@@ -2208,6 +2302,174 @@ function populateSierra1500Features() {
         });
     }).catch(function(error) {
         console.error('Fetch error for Sierra 1500 population: ' + error.message);
+    });
+}
+
+// Sierra 2500 population function
+function populateSierra2500Features() {
+    console.log('=== populateSierra2500Features called ===');
+    console.log('Current sierra2500Populated flag:', sierra2500Populated);
+    console.log('Form ID:', formId);
+    console.log('sierra2500HtmlBlockFieldId:', sierra2500HtmlBlockFieldId);
+    
+    if (sierra2500Populated) {
+        console.log('Sierra 2500 features already populated, skipping');
+        return;
+    }
+
+    var config = modelConfigs['SIERRA 2500'];
+    if (!config) {
+        console.warn('Sierra 2500 configuration not found');
+        console.log('Available modelConfigs:', Object.keys(modelConfigs));
+        return;
+    }
+    console.log('Sierra 2500 config found:', config);
+
+    // Try multiple selectors to find the HTML block field
+    console.log('Searching for HTML block field with multiple selectors...');
+    var htmlBlock = $('#field_' + formId + '_' + sierra2500HtmlBlockFieldId);
+    console.log('Selector 1 (#field_' + formId + '_' + sierra2500HtmlBlockFieldId + '):', htmlBlock.length);
+    
+    if (!htmlBlock.length) {
+        htmlBlock = $('#field_' + formId + '_142');
+        console.log('Selector 2 (#field_' + formId + '_142):', htmlBlock.length);
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('#input_' + formId + '_142');
+        console.log('Selector 3 (#input_' + formId + '_142):', htmlBlock.length);
+    }
+    if (!htmlBlock.length) {
+        htmlBlock = $('[id*="142"]').filter(function() {
+            return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+        });
+        console.log('Selector 4 (wildcard [id*="142"]):', htmlBlock.length);
+    }
+    
+    console.log('HTML Block field (ID: 142) debug:', {
+        selector: '#field_' + formId + '_' + sierra2500HtmlBlockFieldId,
+        exists: htmlBlock.length > 0,
+        visible: htmlBlock.length ? htmlBlock.is(':visible') : false,
+        content: htmlBlock.length ? htmlBlock.html().substring(0, 200) : 'N/A',
+        actualId: htmlBlock.length ? htmlBlock.attr('id') : 'N/A'
+    });
+    
+    if (!htmlBlock.length) {
+        console.warn('Sierra 2500 HTML block field (ID: 142) not found');
+        return;
+    }
+
+    console.log('Fetching sierra2500 CSV from:', config.csvUrl);
+    fetchCsvWithRetry(config.csvUrl, 'Sierra 2500', 3, 1000).then(function(csvText) {
+        console.log('Sierra 2500 CSV fetched successfully, length:', csvText.length);
+        
+        Papa.parse(csvText, {
+            skipEmptyLines: true,
+            complete: function(results) {
+                console.log('Sierra 2500 CSV parsed for population, rows: ' + results.data.length);
+                
+                var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+                var featureGroups = {};
+                var currentCategory = null;
+                var features = [];
+
+                results.data.forEach(function(row, rowIndex) {
+                    if (row.length > 0) {
+                        var firstCell = row[0] ? row[0].trim() : '';
+                        if (firstCell.startsWith('TRIM LEVELS FOR {')) {
+                            if (currentCategory && features.length > 0) {
+                                featureGroups[currentCategory] = features;
+                            }
+                            currentCategory = firstCell.match(/\{(.+)\}/)[1];
+                            features = row.slice(1).filter(function(f) { return f && f.trim() !== ''; }).map(function(f) {
+                                var cleaned = f.trim();
+                                if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+                                    cleaned = cleaned.slice(1, -1);
+                                }
+                                cleaned = cleaned.replace(/""/g, '"');
+                                return cleaned;
+                            });
+                        }
+                    }
+                });
+                if (currentCategory && features.length > 0) {
+                    featureGroups[currentCategory] = features;
+                }
+
+                console.log('Building HTML for sierra2500 features...');
+                var html = '<div class="feature-groups">';
+                var globalIndex = 0;
+                categories.forEach(function(category) {
+                    var catFeatures = featureGroups[category] || [];
+                    catFeatures.sort(function(a, b) {
+                        return a.toLowerCase().localeCompare(b.toLowerCase());
+                    });
+                    
+                    html += '<div class="feature-column"><h4>' + category + '</h4><div class="gfield_checkbox">';
+                    var categoryHtml = buildCollapsibleFeatureGroups(catFeatures, category, 'sierra2500', globalIndex);
+                    html += categoryHtml.html;
+                    globalIndex = categoryHtml.globalIndex;
+                    html += '</div></div>';
+                });
+                html += '</div>';
+
+                // Replace the placeholder in the HTML block
+                var currentHtml = htmlBlock.html();
+                
+                if (currentHtml.indexOf('{sierra 2500 feature checkboxes}') !== -1) {
+                    var newHtml = currentHtml.replace('{sierra 2500 feature checkboxes}', html);
+                    htmlBlock.html(newHtml);
+                    console.log('Replaced {sierra 2500 feature checkboxes} with generated HTML');
+                } else if (currentHtml.indexOf('{SIERRA 2500 FEATURE CHECKBOXES}') !== -1) {
+                    var newHtml = currentHtml.replace('{SIERRA 2500 FEATURE CHECKBOXES}', html);
+                    htmlBlock.html(newHtml);
+                    console.log('Replaced {SIERRA 2500 FEATURE CHECKBOXES} with generated HTML');
+                } else {
+                    console.warn('No sierra 2500 placeholder found, replacing entire HTML block content');
+                    htmlBlock.html(html);
+                }
+
+                sierra2500Populated = true;
+                console.log('Sierra 2500 features populated into 5 columns in field 142');
+
+                // Bind change events and add info icons
+                htmlBlock.find('input[type="checkbox"]').off('change.SIERRA2500Features').on('change.SIERRA2500Features', function() {
+                    console.log('SIERRA 2500 checkbox changed, updating trim levels');
+                    updateTrimLevels('SIERRA 2500');
+                });
+
+                htmlBlock.find('.feature-info-icon').off('click.featureInfo').on('click.featureInfo', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var feature = $(this).data('feature');
+                    console.log('=== SIERRA 2500 FEATURE INFO ICON CLICKED ===');
+                    console.log('Feature clicked:', feature);
+                    
+                    if (!feature || typeof feature !== 'string') {
+                        console.error('Invalid feature:', feature);
+                        showFeatureDescription('Unknown Feature', 'Feature information not available');
+                        return;
+                    }
+                    
+                    var description = sierra2500FeatureDescriptions[feature.toUpperCase()];
+                    if (!description) {
+                        var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), sierra2500FeatureDescriptions);
+                        if (bestMatch) {
+                            description = bestMatch;
+                            console.log('✅ Found sierra2500 description via fuzzy matching for:', feature);
+                        } else {
+                            description = 'No GMC Sierra 2500 description available for ' + feature;
+                        }
+                    }
+                    console.log('Found description:', description);
+                    showFeatureDescription(feature, description);
+                });
+            },
+            error: function(error) {
+                console.error('Papa Parse error for Sierra 2500 population: ' + error);
+            }
+        });
+    }).catch(function(error) {
+        console.error('Fetch error for Sierra 2500 population: ' + error.message);
     });
 }
 
@@ -4046,6 +4308,144 @@ function populateCanyonFeatures() {
 		}
 	}
 
+	function processSierra2500TrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
+		console.log('Processing SIERRA 2500 trim levels for selected features:', selectedFeatures);
+		
+		var trimLevels = ['PRO', 'SLE', 'SLT', 'AT4', 'DENALI', 'AT4X', 'DENALI ULTIMATE'];
+		var matchingTrimLevels = [];
+		var categories = ['EXTERIOR', 'INTERIOR', 'MECHANICAL', 'SAFETY', 'PACKAGES'];
+		var featureToColumnMap = {};
+		var featureToCategoryMap = {};
+		var trimLevelRowsByCategory = {};
+		var currentCategory = null;
+		
+		// Parse the CSV data to map features to columns and find trim level rows
+		csvData.forEach(function(row, rowIndex) {
+			if (row && row.length > 0) {
+				var firstCell = row[0];
+				
+				// Check if this is a category header
+				if (firstCell && firstCell.includes('TRIM LEVELS FOR {')) {
+					currentCategory = categories.find(function(cat) {
+						return firstCell.includes(cat);
+					});
+					
+					if (currentCategory) {
+						console.log('Found Sierra 2500 category:', currentCategory);
+						
+						// Map features to their column indices for this category
+						for (var i = 1; i < row.length; i++) {
+							var feature = row[i];
+							if (feature && feature.trim() !== '') {
+								var featureKey = feature.trim();
+								featureToColumnMap[featureKey] = i;
+								featureToCategoryMap[featureKey] = currentCategory;
+								console.log('Mapped Sierra 2500 feature:', featureKey, 'to column:', i, 'category:', currentCategory);
+							}
+						}
+						
+						// Initialize trim level rows for this category
+						trimLevelRowsByCategory[currentCategory] = {};
+					}
+				}
+				// Check if this is a trim level row
+				else if (firstCell && trimLevels.includes(firstCell.replace(/"/g, ''))) {
+					var trimLevel = firstCell.replace(/"/g, '');
+					if (currentCategory) {
+						trimLevelRowsByCategory[currentCategory][trimLevel] = row;
+						console.log('Found Sierra 2500 trim level row for', trimLevel, 'in category', currentCategory);
+					}
+				}
+			}
+		});
+		
+		console.log('Sierra 2500 feature to column mapping:', featureToColumnMap);
+		console.log('Sierra 2500 trim level rows by category:', trimLevelRowsByCategory);
+		
+		// Check each trim level against selected features
+		trimLevels.forEach(function(trimLevel) {
+			var matchesAll = true;
+			var missingFeatures = [];
+			
+			selectedFeatures.forEach(function(selectedFeature) {
+				var found = false;
+				
+				// Get the actual feature name from the mapping
+				var actualFeatureName = null;
+				if (window.sierra2500FeatureMap && window.sierra2500FeatureMap[selectedFeature]) {
+					actualFeatureName = window.sierra2500FeatureMap[selectedFeature];
+				} else {
+					actualFeatureName = selectedFeature;
+				}
+				
+				console.log('Checking Sierra 2500 feature:', actualFeatureName, 'for trim level:', trimLevel);
+				
+				// Check if this feature exists in our mapping
+				if (featureToColumnMap[actualFeatureName]) {
+					var columnIndex = featureToColumnMap[actualFeatureName];
+					var category = featureToCategoryMap[actualFeatureName];
+					
+					// Check if this trim level has this feature in this category
+					if (trimLevelRowsByCategory[category] && trimLevelRowsByCategory[category][trimLevel]) {
+						var trimLevelRow = trimLevelRowsByCategory[category][trimLevel];
+						var value = trimLevelRow[columnIndex];
+						console.log('Sierra 2500 feature check:', actualFeatureName, 'column:', columnIndex, 'value:', value, 'trim:', trimLevel);
+						
+						if (value && value.toUpperCase() === 'YES') {
+							found = true;
+							console.log('✅ Sierra 2500 feature found:', actualFeatureName, 'in trim level:', trimLevel);
+						}
+					}
+				}
+				
+				if (!found) {
+					console.log('❌ Sierra 2500 feature NOT found:', actualFeatureName, 'in trim level:', trimLevel);
+					matchesAll = false;
+					missingFeatures.push(actualFeatureName);
+				}
+			});
+			
+			if (matchesAll && selectedFeatures.length > 0) {
+				matchingTrimLevels.push(trimLevel);
+				console.log('✅ Sierra 2500 trim level matches all features:', trimLevel);
+			} else {
+				console.log('❌ Sierra 2500 trim level does not match:', trimLevel, 'missing:', missingFeatures);
+			}
+		});
+		
+		console.log('Matching Sierra 2500 trim levels:', matchingTrimLevels);
+		trimLevelsData['SIERRA 2500'] = matchingTrimLevels;
+		
+		// Update trim levels button
+		if (trimLevelsButtonBlock && trimLevelsButtonBlock.length) {
+			var buttonText = matchingTrimLevels.length > 0 ? 
+				'View Available Trim Levels (' + matchingTrimLevels.length + ')' :
+				'No Matching Trim Levels';
+			
+			trimLevelsButtonBlock.html('<button type="button" id="viewTrimLevelsButton" class="button">' + buttonText + '</button>');
+			
+			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
+				e.preventDefault();
+				if (matchingTrimLevels.length > 0) {
+					showTrimLevelsPopup(model, matchingTrimLevels, 'Sierra 2500');
+				} else {
+					alert('No matching trim levels found for the selected features.');
+				}
+			});
+		}
+		
+		// Update field 69 with trim levels
+		if (htmlBlock && htmlBlock.length) {
+			var trimLevelsText = matchingTrimLevels.length > 0 ? matchingTrimLevels.join(', ') : 'No matching trim levels found';
+			var message = 'Wonderful, it sounds like the ' + trimLevelsText + ' would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
+			
+			htmlBlock.find('p').text(message);
+			console.log('✅ HTML block (ID: 69) updated for Sierra 2500 with:', message);
+		} else {
+			console.warn('❌ HTML block (ID: 69) not found for Sierra 2500');
+		}
+	}
+
 	function updateTrimLevels(model) {
     var config = modelConfigs[model];
     if (!config) {
@@ -4146,6 +4546,52 @@ function populateCanyonFeatures() {
         
         htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
         trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    } else if (model === 'SIERRA 1500') {
+        // For SIERRA 1500, checkboxes are in field 141 (HTML block)
+        checkboxField = $('#field_' + formId + '_' + sierra1500HtmlBlockFieldId);
+        if (!checkboxField.length) {
+            checkboxField = $('#field_' + formId + '_141');
+        }
+        if (!checkboxField.length) {
+            checkboxField = $('[id*="141"]').filter(function() {
+                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+            });
+        }
+        
+        console.log('SIERRA 1500 checkboxField debug:', {
+            sierra1500HtmlBlockFieldId: sierra1500HtmlBlockFieldId,
+            selector1: '#field_' + formId + '_' + sierra1500HtmlBlockFieldId,
+            selector2: '#field_' + formId + '_141',
+            found: checkboxField.length,
+            actualId: checkboxField.attr('id'),
+            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
+        });
+        
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
+    } else if (model === 'SIERRA 2500') {
+        // For SIERRA 2500, checkboxes are in field 142 (HTML block)
+        checkboxField = $('#field_' + formId + '_' + sierra2500HtmlBlockFieldId);
+        if (!checkboxField.length) {
+            checkboxField = $('#field_' + formId + '_142');
+        }
+        if (!checkboxField.length) {
+            checkboxField = $('[id*="142"]').filter(function() {
+                return $(this).attr('id').includes('field') || $(this).attr('id').includes('input');
+            });
+        }
+        
+        console.log('SIERRA 2500 checkboxField debug:', {
+            sierra2500HtmlBlockFieldId: sierra2500HtmlBlockFieldId,
+            selector1: '#field_' + formId + '_' + sierra2500HtmlBlockFieldId,
+            selector2: '#field_' + formId + '_142',
+            found: checkboxField.length,
+            actualId: checkboxField.attr('id'),
+            hasCheckboxes: checkboxField.find('input[type="checkbox"]').length
+        });
+        
+        htmlBlock = $('#field_' + formId + '_' + htmlBlockFieldId);
+        trimLevelsButtonBlock = $('#field_' + formId + '_' + trimLevelsButtonFieldId);
     } else {
         // For other models, checkboxes are in their respective fields
         checkboxField = $('#field_' + formId + '_' + config.fieldId);
@@ -4157,7 +4603,7 @@ function populateCanyonFeatures() {
     var defaultButtonText = '<button id="viewTrimLevelsButton">View Trim Levels</button>';
     var noMatchText = 'No matching trim levels found. Please adjust your feature selections or contact support.';
 
-    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : model === 'ACADIA' ? acadiaHtmlBlockFieldId : model === 'YUKON' ? yukonHtmlBlockFieldId : model === 'CANYON' ? canyonHtmlBlockFieldId : model === 'SIERRA 1500' ? sierra1500HtmlBlockFieldId : config.fieldId) + '):', {
+    console.log('Checking ' + model + ' checkbox field (ID: ' + (model === 'TERRAIN' ? terrainHtmlBlockFieldId : model === 'ACADIA' ? acadiaHtmlBlockFieldId : model === 'YUKON' ? yukonHtmlBlockFieldId : model === 'CANYON' ? canyonHtmlBlockFieldId : model === 'SIERRA 1500' ? sierra1500HtmlBlockFieldId : model === 'SIERRA 2500' ? sierra2500HtmlBlockFieldId : config.fieldId) + '):', {
         fieldExists: checkboxField.length > 0,
         fieldVisible: checkboxField.is(':visible'),
         fieldClasses: checkboxField.attr('class'),
@@ -4301,6 +4747,30 @@ function populateCanyonFeatures() {
             
             // Sierra 1500 features already have their icons from initial HTML building, so skip them entirely
             console.log('Skipping Sierra 1500 feature icon addition since Sierra 1500 already has styled icons from initial HTML building:', feature);
+        });
+    } else if (model === 'SIERRA 2500') {
+        // For SIERRA 2500, handle the different structure
+        checkboxField.find('.gchoice').each(function() {
+            var $div = $(this);
+            var $input = $div.find('input[type="checkbox"]');
+            var $label = $div.find('label');
+            var feature = $input.attr('value') || '';
+            
+            if (!feature || !$input.length) {
+                console.warn('Invalid SIERRA 2500 checkbox structure in field (ID: ' + sierra2500HtmlBlockFieldId + ')', {
+                    feature: feature,
+                    inputExists: $input.length > 0,
+                    labelExists: $label.length > 0,
+                    divHtml: $div.html(),
+                    inputId: $input.attr('id'),
+                    labelClasses: $label.attr('class'),
+                    parentClasses: $div.attr('class')
+                });
+                return;
+            }
+            
+            // Sierra 2500 features already have their icons from initial HTML building, so skip them entirely
+            console.log('Skipping Sierra 2500 feature icon addition since Sierra 2500 already has styled icons from initial HTML building:', feature);
         });
     } else {
         // For other models, use existing logic
@@ -4453,6 +4923,44 @@ function populateCanyonFeatures() {
             }
             
             console.log('Found description:', description.substring(0, 100) + '...');
+        } else if (model === 'SIERRA 2500') {
+            console.log('SIERRA 2500 model detected, using GMC descriptions');
+            console.log('Feature to lookup:', feature);
+            console.log('Feature uppercase:', feature.toUpperCase());
+            console.log('Available sierra2500 descriptions:', Object.keys(sierra2500FeatureDescriptions));
+            console.log('Total sierra2500 descriptions available:', Object.keys(sierra2500FeatureDescriptions).length);
+            
+            // Try exact match first
+            description = sierra2500FeatureDescriptions[feature.toUpperCase()];
+            
+            // If not found, try fuzzy matching
+            if (!description) {
+                console.log('🔍 Fuzzy matching for Sierra 2500 feature:', feature);
+                var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), sierra2500FeatureDescriptions);
+                description = bestMatch;
+                
+                // If still not found, try partial matching
+                if (!description) {
+                    var featureUpper = feature.toUpperCase();
+                    Object.keys(sierra2500FeatureDescriptions).forEach(function(key) {
+                        if (!description) {
+                            if (key.includes(featureUpper) || featureUpper.includes(key)) {
+                                description = sierra2500FeatureDescriptions[key];
+                                console.log('✅ Found partial match for Sierra 2500 feature:', feature, '-> matched:', key);
+                            }
+                        }
+                    });
+                }
+                
+                if (!description) {
+                    description = 'No description available for ' + feature;
+                    console.log('❌ No description found for Sierra 2500 feature:', feature);
+                }
+            } else {
+                console.log('✅ Found exact match for Sierra 2500 feature:', feature);
+            }
+            
+            console.log('Found description:', description.substring(0, 100) + '...');
         } else {
             description = featureDescriptions[feature] || 'No description available for ' + feature;
         }
@@ -4584,6 +5092,21 @@ function populateCanyonFeatures() {
             // No need to unescape since we're not storing escaped values anymore
             
             console.log('SIERRA 1500 checkbox debug:', {
+                id: $input.attr('id'),
+                checkboxValue: checkboxValue,
+                mappedFeature: feature,
+                featureLength: feature.length,
+                name: $input.attr('name'),
+                checked: $input.is(':checked'),
+                labelText: $input.next('label').text().substring(0, 100)
+            });
+        } else if (model === 'SIERRA 2500') {
+            // For SIERRA 2500, get feature from the global mapping using the checkbox value
+            var checkboxValue = $input.attr('value') || '';
+            feature = window.sierra2500FeatureMap && window.sierra2500FeatureMap[checkboxValue] ? window.sierra2500FeatureMap[checkboxValue] : '';
+            // No need to unescape since we're not storing escaped values anymore
+            
+            console.log('SIERRA 2500 checkbox debug:', {
                 id: $input.attr('id'),
                 checkboxValue: checkboxValue,
                 mappedFeature: feature,
@@ -4742,6 +5265,24 @@ function populateCanyonFeatures() {
                     console.log(model + ' CSV parsed, rows: ' + results.data.length);
                     console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
                     processSierra1500TrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
+                }
+            });
+            return;
+        }
+        
+        // Special handling for SIERRA 2500 model
+        if (model === 'SIERRA 2500') {
+            // Log the full CSV content to debug data issues
+            console.log('=== FULL SIERRA 2500 CSV CONTENT ===');
+            console.log(csvText);
+            console.log('=== END SIERRA 2500 CSV CONTENT ===');
+            
+            Papa.parse(csvText, {
+                skipEmptyLines: true,
+                complete: function(results) {
+                    console.log(model + ' CSV parsed, rows: ' + results.data.length);
+                    console.log('First 10 rows of parsed data:', results.data.slice(0, 10));
+                    processSierra2500TrimLevels(results.data, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model);
                 }
             });
             return;
@@ -5407,19 +5948,27 @@ function initFormBindings() {
                                     populateCanyonFeatures();
                                     console.log('canyonPopulated after call:', canyonPopulated);
                                     updateTrimLevels('CANYON');
-                                } else if (input.val() === 'SIERRA 1500' && input.is(':checked')) {
-                                    console.log('🚗 SIERRA 1500 selected via radio button - calling populateSierra1500Features');
-                                    console.log('Current time:', new Date().toISOString());
-                                    console.log('sierra1500Populated before call:', sierra1500Populated);
-                                    populateSierra1500Features();
-                                    console.log('sierra1500Populated after call:', sierra1500Populated);
-                                    updateTrimLevels('SIERRA 1500');
-                                } else if (input.is(':checked')) {
-                                    console.log('Non-TERRAIN/YUKON/CANYON/SIERRA 1500 GMC model selected: ' + input.val());
-                                    terrainPopulated = false;
-                                    yukonPopulated = false;
-                                    canyonPopulated = false;
-                                    sierra1500Populated = false;
+                                                } else if (input.val() === 'SIERRA 1500' && input.is(':checked')) {
+                    console.log('🚗 SIERRA 1500 selected via radio button - calling populateSierra1500Features');
+                    console.log('Current time:', new Date().toISOString());
+                    console.log('sierra1500Populated before call:', sierra1500Populated);
+                    populateSierra1500Features();
+                    console.log('sierra1500Populated after call:', sierra1500Populated);
+                    updateTrimLevels('SIERRA 1500');
+                } else if (input.val() === 'SIERRA 2500' && input.is(':checked')) {
+                    console.log('🚗 SIERRA 2500 selected via radio button - calling populateSierra2500Features');
+                    console.log('Current time:', new Date().toISOString());
+                    console.log('sierra2500Populated before call:', sierra2500Populated);
+                    populateSierra2500Features();
+                    console.log('sierra2500Populated after call:', sierra2500Populated);
+                    updateTrimLevels('SIERRA 2500');
+                } else if (input.is(':checked')) {
+                    console.log('Non-TERRAIN/YUKON/CANYON/SIERRA 1500/SIERRA 2500 GMC model selected: ' + input.val());
+                                                        terrainPopulated = false;
+                    yukonPopulated = false;
+                    canyonPopulated = false;
+                    sierra1500Populated = false;
+                    sierra2500Populated = false;
                                 }
                             }
                         }
@@ -5493,20 +6042,28 @@ function initFormBindings() {
                              populateCanyonFeatures();
                              console.log('canyonPopulated after call:', canyonPopulated);
                              updateTrimLevels('CANYON');
-                         } else if ($(this).val() === 'SIERRA 1500' && $(this).is(':checked')) {
-                             console.log('🚗 SIERRA 1500 selected via delegated radio button - calling populateSierra1500Features');
-                             console.log('Current time:', new Date().toISOString());
-                             console.log('sierra1500Populated before call:', sierra1500Populated);
-                             populateSierra1500Features();
-                             console.log('sierra1500Populated after call:', sierra1500Populated);
-                             updateTrimLevels('SIERRA 1500');
-                         } else if ($(this).is(':checked')) {
-                             console.log('Non-TERRAIN/ACADIA/YUKON/CANYON/SIERRA 1500 GMC model selected via delegated: ' + $(this).val());
-                             terrainPopulated = false;
-                             acadiaPopulated = false;
-                             yukonPopulated = false;
-                             canyonPopulated = false;
-                             sierra1500Populated = false;
+                                                 } else if ($(this).val() === 'SIERRA 1500' && $(this).is(':checked')) {
+                            console.log('🚗 SIERRA 1500 selected via delegated radio button - calling populateSierra1500Features');
+                            console.log('Current time:', new Date().toISOString());
+                            console.log('sierra1500Populated before call:', sierra1500Populated);
+                            populateSierra1500Features();
+                            console.log('sierra1500Populated after call:', sierra1500Populated);
+                            updateTrimLevels('SIERRA 1500');
+                        } else if ($(this).val() === 'SIERRA 2500' && $(this).is(':checked')) {
+                            console.log('🚗 SIERRA 2500 selected via delegated radio button - calling populateSierra2500Features');
+                            console.log('Current time:', new Date().toISOString());
+                            console.log('sierra2500Populated before call:', sierra2500Populated);
+                            populateSierra2500Features();
+                            console.log('sierra2500Populated after call:', sierra2500Populated);
+                            updateTrimLevels('SIERRA 2500');
+                        } else if ($(this).is(':checked')) {
+                            console.log('Non-TERRAIN/ACADIA/YUKON/CANYON/SIERRA 1500/SIERRA 2500 GMC model selected via delegated: ' + $(this).val());
+                                                         terrainPopulated = false;
+                            acadiaPopulated = false;
+                            yukonPopulated = false;
+                            canyonPopulated = false;
+                            sierra1500Populated = false;
+                            sierra2500Populated = false;
                          }
                      }
                 }
@@ -7828,6 +8385,7 @@ function showVehicleInfo(isKiaField) {
     loadYukonFeatureDescriptions();
     loadCanyonFeatureDescriptions();
     loadSierra1500FeatureDescriptions();
+    loadSierra2500FeatureDescriptions();
 initFormBindings();
 updateSelectedName();
 
