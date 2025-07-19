@@ -5365,8 +5365,23 @@ function populateCanyonFeatures() {
                     }
                     console.log('Feature groups for ' + model + ': ', featureGroups);
 
+                    // Extract all available trim levels dynamically from CSV
+                    var allTrimLevels = new Set();
+                    Object.keys(featureGroups).forEach(function(category) {
+                        var group = featureGroups[category];
+                        if (group && group.rows) {
+                            group.rows.forEach(function(row) {
+                                var trimLevel = row['TRIM LEVELS'] ? row['TRIM LEVELS'].trim() : '';
+                                if (trimLevel && trimLevel !== '') {
+                                    allTrimLevels.add(trimLevel.toUpperCase());
+                                }
+                            });
+                        }
+                    });
+                    console.log('All available trim levels for ' + model + ':', [...allTrimLevels]);
+
                     // Match selected features to trim levels across categories
-                    var trimLevelSet = new Set(['ELEVATION', 'AT4', 'DENALI']);
+                    var trimLevelSet = new Set([...allTrimLevels]);
                     selectedFeatures.forEach(function(feature) {
                         var matchedTrims = new Set();
                         categories.forEach(function(category) {
