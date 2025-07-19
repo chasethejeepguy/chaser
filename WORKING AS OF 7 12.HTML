@@ -2375,6 +2375,10 @@ jQuery(document).ready(function($) {
                 // Now populate the feature-to-trim-levels mapping
                 populateFeatureTrimLevelsMap('TERRAIN', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 
+                // Create global mappings for trim walk functionality
+                window.terrainTrimLevelMap = featureToTrimLevelsMap['TERRAIN'];
+                window.terrainFeatureToCategoryMap = featureToCategoryMap;
+
                 console.log('Building HTML for terrain features...');
                 
                 // Build trim level walk buttons
@@ -2701,6 +2705,10 @@ function populateSierra1500Features() {
                 // Now populate the feature-to-trim-levels mapping using Sierra function
                 populateFeatureTrimLevelsMapSierra('SIERRA1500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
 
+                // Create global mappings for trim walk functionality
+                window.sierra1500TrimLevelMap = featureToTrimLevelsMap['SIERRA1500'];
+                window.sierra1500FeatureToCategoryMap = featureToCategoryMap;
+
                 console.log('Building HTML for sierra1500 features...');
                 
                 // Build trim level walk buttons
@@ -2961,6 +2969,10 @@ function populateSierra2500Features() {
                 
                 // Now populate the feature-to-trim-levels mapping using Sierra function
                 populateFeatureTrimLevelsMapSierra('SIERRA2500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
+
+                // Create global mappings for trim walk functionality
+                window.sierra2500TrimLevelMap = featureToTrimLevelsMap['SIERRA2500'];
+                window.sierra2500FeatureToCategoryMap = featureToCategoryMap;
 
                 console.log('Building HTML for sierra2500 features...');
                 
@@ -3234,6 +3246,10 @@ function populateAcadiaFeatures() {
                 
                 // Now populate the feature-to-trim-levels mapping
                 populateFeatureTrimLevelsMap('ACADIA', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+
+                // Create global mappings for trim walk functionality
+                window.acadiaTrimLevelMap = featureToTrimLevelsMap['ACADIA'];
+                window.acadiaFeatureToCategoryMap = featureToCategoryMap;
 
                 console.log('Building HTML for acadia features...');
                 
@@ -3570,6 +3586,10 @@ function populateYukonFeatures() {
                 // Now populate the feature-to-trim-levels mapping
                 populateFeatureTrimLevelsMap('YUKON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 
+                // Create global mappings for trim walk functionality
+                window.yukonTrimLevelMap = featureToTrimLevelsMap['YUKON'];
+                window.yukonFeatureToCategoryMap = featureToCategoryMap;
+
                 console.log('Building HTML for yukon features...');
                 
                 // Build trim level walk buttons
@@ -3893,6 +3913,10 @@ function populateCanyonFeatures() {
                 
                 // Now populate the feature-to-trim-levels mapping
                 populateFeatureTrimLevelsMap('CANYON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+
+                // Create global mappings for trim walk functionality
+                window.canyonTrimLevelMap = featureToTrimLevelsMap['CANYON'];
+                window.canyonFeatureToCategoryMap = featureToCategoryMap;
 
                 console.log('Building HTML for canyon features...');
                 
@@ -4281,6 +4305,10 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMap('TERRAIN', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+		
+		// Create global mappings for trim walk functionality
+		window.terrainTrimLevelMap = featureToTrimLevelsMap['TERRAIN'];
+		window.terrainFeatureToCategoryMap = featureToCategoryMap;
 	}
 
 
@@ -4516,6 +4544,10 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMap('YUKON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+		
+		// Create global mappings for trim walk functionality
+		window.yukonTrimLevelMap = featureToTrimLevelsMap['YUKON'];
+		window.yukonFeatureToCategoryMap = featureToCategoryMap;
 	}
 
 	function processCanyonTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
@@ -4692,6 +4724,10 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMap('CANYON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+		
+		// Create global mappings for trim walk functionality
+		window.canyonTrimLevelMap = featureToTrimLevelsMap['CANYON'];
+		window.canyonFeatureToCategoryMap = featureToCategoryMap;
 		
 		// Update the HTML block with trim level replacement (field 69)
 		var defaultText = 'Wonderful, it sounds like the {TRIM LEVELS} would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
@@ -4961,6 +4997,10 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMap('ACADIA', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
+		
+		// Create global mappings for trim walk functionality
+		window.acadiaTrimLevelMap = featureToTrimLevelsMap['ACADIA'];
+		window.acadiaFeatureToCategoryMap = featureToCategoryMap;
 	}
 
 	function processSierra1500TrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
@@ -5105,6 +5145,10 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMapSierra('SIERRA1500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
+		
+		// Create global mappings for trim walk functionality
+		window.sierra1500TrimLevelMap = featureToTrimLevelsMap['SIERRA1500'];
+		window.sierra1500FeatureToCategoryMap = featureToCategoryMap;
 	}
 
 	function processSierra2500TrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
@@ -5248,6 +5292,10 @@ function populateCanyonFeatures() {
 		
 		// Populate feature-to-trim-levels mapping for display
 		populateFeatureTrimLevelsMapSierra('SIERRA2500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
+		
+		// Create global mappings for trim walk functionality
+		window.sierra2500TrimLevelMap = featureToTrimLevelsMap['SIERRA2500'];
+		window.sierra2500FeatureToCategoryMap = featureToCategoryMap;
 	}
 
 	function updateTrimLevels(model) {
