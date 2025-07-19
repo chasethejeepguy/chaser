@@ -4301,7 +4301,9 @@ function populateCanyonFeatures() {
 				if (matchingTrimLevels.length > 0) {
 					console.log('Showing Sierra 1500 trim levels popup');
 					// Call the proper showTrimLevelsPopup function with correct model filter
-					showTrimLevelsPopup(model, matchingTrimLevels, 'Sierra 1500');
+					var config = modelConfigs[model];
+					var correctModelFilter = config ? config.modelFilter : 'Sierra 1500';
+					showTrimLevelsPopup(model, matchingTrimLevels, correctModelFilter);
 				} else {
 					alert('No matching Sierra 1500 trim levels found for the selected features.');
 				}
@@ -4439,7 +4441,9 @@ function populateCanyonFeatures() {
 			$('#viewTrimLevelsButton').off('click.trimLevels').on('click.trimLevels', function(e) {
 				e.preventDefault();
 				if (matchingTrimLevels.length > 0) {
-					showTrimLevelsPopup(model, matchingTrimLevels, 'Sierra 2500');
+					var config = modelConfigs[model];
+					var correctModelFilter = config ? config.modelFilter : 'Sierra 2500HD';
+					showTrimLevelsPopup(model, matchingTrimLevels, correctModelFilter);
 				} else {
 					alert('No matching trim levels found for the selected features.');
 				}
