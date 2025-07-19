@@ -1712,30 +1712,36 @@ jQuery(document).ready(function($) {
             var featureLower = feature.toLowerCase();
             var grouped = false;
             
-
+            // Special priority handling for EXTERIOR category: wheels override everything
+            if (category === 'EXTERIOR' && (featureLower.includes('wheel') || featureLower.includes('wheels'))) {
+                groupedFeatures['Wheels'].push(feature);
+                grouped = true;
+            }
             
-            // Check if feature belongs to any group
-            categoryGroups.forEach(function(group) {
-                if (!grouped && group.keywords.some(function(keyword) {
-                    var matches = featureLower.includes(keyword.toLowerCase());
-                    
-                    // Special handling for generic "Seats" group - exclude features that should go to specific seat groups
-                    if (matches && group.name === 'Seats') {
-                        // Don't assign to generic "Seats" if feature contains specific seat type keywords
-                        if (featureLower.includes('vinyl') || featureLower.includes('leather') || 
-                            featureLower.includes('cloth') || featureLower.includes('ventilate') || 
-                            featureLower.includes('ventilated')) {
-                            matches = false;
+            // Check if feature belongs to any group (skip if already grouped by wheel priority)
+            if (!grouped) {
+                categoryGroups.forEach(function(group) {
+                    if (!grouped && group.keywords.some(function(keyword) {
+                        var matches = featureLower.includes(keyword.toLowerCase());
+                        
+                        // Special handling for generic "Seats" group - exclude features that should go to specific seat groups
+                        if (matches && group.name === 'Seats') {
+                            // Don't assign to generic "Seats" if feature contains specific seat type keywords
+                            if (featureLower.includes('vinyl') || featureLower.includes('leather') || 
+                                featureLower.includes('cloth') || featureLower.includes('ventilate') || 
+                                featureLower.includes('ventilated')) {
+                                matches = false;
+                            }
                         }
-                    }
-                    
-                    return matches;
-                })) {
+                        
+                        return matches;
+                    })) {
 
-                    groupedFeatures[group.name].push(feature);
-                    grouped = true;
-                }
-            });
+                        groupedFeatures[group.name].push(feature);
+                        grouped = true;
+                    }
+                });
+            }
             
             // If not grouped, add to ungrouped
             if (!grouped) {
