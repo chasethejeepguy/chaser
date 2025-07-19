@@ -1784,9 +1784,10 @@ jQuery(document).ready(function($) {
      * @param {string} category - Category name
      * @param {string} modelPrefix - Model prefix for IDs
      * @param {number} index - Global index for unique IDs
+     * @param {Array} trimLevels - Optional array of trim levels that support this feature
      * @returns {string} - HTML string for the checkbox
      */
-    function buildSingleCheckbox(feature, category, modelPrefix, index) {
+    function buildSingleCheckbox(feature, category, modelPrefix, index, trimLevels) {
         var uniqueId = 'choice_3_' + modelPrefix + '_' + index;
         var inputName = 'input_' + modelPrefix + '_' + index;
         var simpleValue = modelPrefix + '_feature_' + index;
