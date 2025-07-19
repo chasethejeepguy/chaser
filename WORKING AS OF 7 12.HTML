@@ -1699,11 +1699,26 @@ jQuery(document).ready(function($) {
             var featureLower = feature.toLowerCase();
             var grouped = false;
             
+
+            
             // Check if feature belongs to any group
             categoryGroups.forEach(function(group) {
                 if (!grouped && group.keywords.some(function(keyword) {
-                    return featureLower.includes(keyword.toLowerCase());
+                    var matches = featureLower.includes(keyword.toLowerCase());
+                    
+                    // Special handling for generic "Seats" group - exclude features that should go to specific seat groups
+                    if (matches && group.name === 'Seats') {
+                        // Don't assign to generic "Seats" if feature contains specific seat type keywords
+                        if (featureLower.includes('vinyl') || featureLower.includes('leather') || 
+                            featureLower.includes('cloth') || featureLower.includes('ventilate') || 
+                            featureLower.includes('ventilated')) {
+                            matches = false;
+                        }
+                    }
+                    
+                    return matches;
                 })) {
+
                     groupedFeatures[group.name].push(feature);
                     grouped = true;
                 }
