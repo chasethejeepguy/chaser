@@ -2415,17 +2415,23 @@ function populateSierra2500Features() {
 
                 // Replace the placeholder in the HTML block
                 var currentHtml = htmlBlock.html();
+                console.log('🔍 Current HTML block content (first 300 chars):', currentHtml.substring(0, 300));
+                console.log('🔍 Searching for placeholder: {sierra 2500 feature checkboxes}');
+                console.log('🔍 Searching for placeholder: {SIERRA 2500 FEATURE CHECKBOXES}');
                 
                 if (currentHtml.indexOf('{sierra 2500 feature checkboxes}') !== -1) {
                     var newHtml = currentHtml.replace('{sierra 2500 feature checkboxes}', html);
                     htmlBlock.html(newHtml);
-                    console.log('Replaced {sierra 2500 feature checkboxes} with generated HTML');
+                    console.log('✅ Replaced {sierra 2500 feature checkboxes} with generated HTML');
                 } else if (currentHtml.indexOf('{SIERRA 2500 FEATURE CHECKBOXES}') !== -1) {
                     var newHtml = currentHtml.replace('{SIERRA 2500 FEATURE CHECKBOXES}', html);
                     htmlBlock.html(newHtml);
-                    console.log('Replaced {SIERRA 2500 FEATURE CHECKBOXES} with generated HTML');
+                    console.log('✅ Replaced {SIERRA 2500 FEATURE CHECKBOXES} with generated HTML');
                 } else {
-                    console.warn('No sierra 2500 placeholder found, replacing entire HTML block content');
+                    console.warn('❌ No sierra 2500 placeholder found in HTML block!');
+                    console.warn('📝 SOLUTION: Add {sierra 2500 feature checkboxes} to your HTML block field (ID 142)');
+                    console.warn('🔧 For now, replacing entire HTML block content with checkboxes');
+                    console.log('📋 HTML Block Content:', currentHtml);
                     htmlBlock.html(html);
                 }
 
@@ -8644,7 +8650,50 @@ window.forceSierra2500Populate = function() {
     }
 };
 
-console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually(), checkTerrainState(), testSierra2500Debug(), forceSierra2500Populate()');
+window.findSierra2500HtmlBlock = function() {
+    console.log('=== FINDING SIERRA 2500 HTML BLOCK ===');
+    var formId = $('.gform_wrapper form').attr('id') ? $('.gform_wrapper form').attr('id').replace('gform_', '') : '3';
+    console.log('Form ID:', formId);
+    
+    var htmlBlock = $('#field_' + formId + '_142');
+    console.log('HTML Block Field (ID 142):');
+    console.log('  - Selector:', '#field_' + formId + '_142');
+    console.log('  - Exists:', htmlBlock.length > 0);
+    console.log('  - Visible:', htmlBlock.length ? htmlBlock.is(':visible') : false);
+    
+    if (htmlBlock.length > 0) {
+        var content = htmlBlock.html();
+        console.log('  - Current content:', content);
+        console.log('  - Contains {sierra 2500 feature checkboxes}:', content.indexOf('{sierra 2500 feature checkboxes}') !== -1);
+        console.log('  - Contains {SIERRA 2500 FEATURE CHECKBOXES}:', content.indexOf('{SIERRA 2500 FEATURE CHECKBOXES}') !== -1);
+        
+        if (content.indexOf('{sierra 2500 feature checkboxes}') === -1 && content.indexOf('{SIERRA 2500 FEATURE CHECKBOXES}') === -1) {
+            console.warn('❌ PLACEHOLDER MISSING!');
+            console.warn('📝 SOLUTION: Edit your form and add the following text to HTML Block field (ID 142):');
+            console.warn('   {sierra 2500 feature checkboxes}');
+            console.warn('🔧 Alternative: Use {SIERRA 2500 FEATURE CHECKBOXES} (uppercase)');
+        } else {
+            console.log('✅ Placeholder found in HTML block');
+        }
+        
+        // Highlight the HTML block visually
+        htmlBlock.css('border', '3px solid red');
+        setTimeout(function() {
+            htmlBlock.css('border', '');
+        }, 5000);
+        console.log('🎯 HTML block highlighted with red border for 5 seconds');
+    } else {
+        console.error('❌ HTML Block field (ID 142) not found!');
+        console.log('🔍 Available fields with ID containing "142":');
+        $('[id*="142"]').each(function() {
+            console.log('  - Found element:', this.id, '(tag:', this.tagName + ')');
+        });
+    }
+    
+    return htmlBlock.length > 0;
+};
+
+console.log('Debug functions available: testTerrainDebug(), forcePopulateTerrainFeatures(), createTerrainCheckboxesManually(), checkTerrainState(), testSierra2500Debug(), forceSierra2500Populate(), findSierra2500HtmlBlock()');
 
 // GLOBAL RADIO BUTTON LISTENER FOR DEBUGGING
 $(document).on('change', 'input[type="radio"]', function() {
