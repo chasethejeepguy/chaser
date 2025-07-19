@@ -1923,6 +1923,81 @@ jQuery(document).ready(function($) {
         
         // Show popup
         showPopup(popupHtml, 'trim-walk-popup');
+        
+        // Set up event handlers for info icons in the trim walk popup
+        // Get the appropriate feature descriptions object based on model prefix
+        var featureDescriptions = {};
+        var modelName = '';
+        
+        switch(modelPrefix.toLowerCase()) {
+            case 'terrain':
+                featureDescriptions = terrainFeatureDescriptions;
+                modelName = 'Terrain';
+                break;
+            case 'acadia':
+                featureDescriptions = acadiaFeatureDescriptions;
+                modelName = 'Acadia';
+                break;
+            case 'yukon':
+                featureDescriptions = yukonFeatureDescriptions;
+                modelName = 'Yukon';
+                break;
+            case 'canyon':
+                featureDescriptions = canyonFeatureDescriptions;
+                modelName = 'Canyon';
+                break;
+            case 'sierra1500':
+                featureDescriptions = sierra1500FeatureDescriptions;
+                modelName = 'Sierra 1500';
+                break;
+            case 'sierra2500':
+                featureDescriptions = sierra2500FeatureDescriptions;
+                modelName = 'Sierra 2500';
+                break;
+            default:
+                console.warn('Unknown model prefix for trim walk popup:', modelPrefix);
+                return;
+        }
+        
+        console.log('Setting up trim walk info icon handlers for', modelName, 'with', Object.keys(featureDescriptions).length, 'descriptions');
+        
+        // Set up click handlers for info icons in the trim walk popup
+        $('#trim-walk-popup .feature-info-icon').off('click.trimWalkFeatureInfo').on('click.trimWalkFeatureInfo', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var feature = $(this).data('feature');
+            
+            console.log('=== TRIM WALK FEATURE INFO ICON CLICKED ===');
+            console.log('Model:', modelName);
+            console.log('Feature clicked:', feature);
+            console.log('Available descriptions:', Object.keys(featureDescriptions).length);
+            
+            // Handle case where feature might be undefined or not a string
+            if (!feature || typeof feature !== 'string') {
+                console.error('Invalid feature:', feature);
+                showFeatureDescription('Unknown Feature', 'Feature information not available');
+                return;
+            }
+            
+            // Look up description (try both original case and uppercase)
+            var description = featureDescriptions[feature] || featureDescriptions[feature.toUpperCase()];
+            
+            if (!description) {
+                // Try fuzzy matching for typos
+                var bestMatch = findBestDescriptionMatch(feature.toUpperCase(), featureDescriptions);
+                if (bestMatch) {
+                    description = bestMatch;
+                    console.log('✅ Found description via fuzzy matching for:', feature);
+                } else {
+                    description = 'No GMC ' + modelName + ' description available for ' + feature;
+                    console.log('❌ No description found for:', feature);
+                }
+            } else {
+                console.log('✅ Found description for:', feature);
+            }
+            
+            showFeatureDescription(feature, description);
+        });
     }
     
     /**
