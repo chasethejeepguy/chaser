@@ -700,6 +700,7 @@ jQuery(document).ready(function($) {
     var checkCustomerInfoCounter = 0;
     var featureDescriptions = {};
     var trimLevelsData = {};
+    var featureToTrimLevelsMap = {}; // Maps features to their supported trim levels by model
     var terrainPopulated = false;
     var acadiaPopulated = false;
     var yukonPopulated = false;
@@ -1751,7 +1752,8 @@ jQuery(document).ready(function($) {
                 html += '<div class="feature-group-content" id="' + groupId + '" style="display: none; margin-left: 10px; border-left: 2px solid #007cba; padding-left: 10px;">';
                 
                 groupFeatures.forEach(function(feature) {
-                    var checkboxHtml = buildSingleCheckbox(feature, category, modelPrefix, globalIndex);
+                    var featureTrimLevels = getFeatureTrimLevels(feature, modelPrefix);
+                    var checkboxHtml = buildSingleCheckbox(feature, category, modelPrefix, globalIndex, featureTrimLevels);
                     html += checkboxHtml;
                     globalIndex++;
                 });
@@ -1767,7 +1769,8 @@ jQuery(document).ready(function($) {
         });
         
         ungroupedFeatures.forEach(function(feature) {
-            var checkboxHtml = buildSingleCheckbox(feature, category, modelPrefix, globalIndex);
+            var featureTrimLevels = getFeatureTrimLevels(feature, modelPrefix);
+            var checkboxHtml = buildSingleCheckbox(feature, category, modelPrefix, globalIndex, featureTrimLevels);
             html += checkboxHtml;
             globalIndex++;
         });
@@ -1778,6 +1781,99 @@ jQuery(document).ready(function($) {
         };
     }
     
+    /**
+     * Populates the feature-to-trim-levels mapping for a given model.
+     * @param {string} modelKey - Model key (e.g., 'TERRAIN', 'YUKON')
+     * @param {Object} featureToColumnMap - Maps features to CSV column indices
+     * @param {Object} featureToCategoryMap - Maps features to categories
+     * @param {Object} trimLevelRows - Trim level data rows
+     * @param {Object} trimLevelRowsByCategory - Category-specific trim level data
+     * @param {Array} trimLevels - Array of trim level names
+     */
+    function populateFeatureTrimLevelsMap(modelKey, featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels) {
+        if (!featureToTrimLevelsMap[modelKey]) {
+            featureToTrimLevelsMap[modelKey] = {};
+        }
+        
+        // Go through each feature and determine which trim levels support it
+        Object.keys(featureToColumnMap).forEach(function(feature) {
+            var columnIndex = featureToColumnMap[feature];
+            var featureCategory = featureToCategoryMap[feature];
+            var supportedTrimLevels = [];
+            
+            trimLevels.forEach(function(trimLevel) {
+                var value = null;
+                
+                // Use category-specific trim level data if available
+                if (featureCategory && trimLevelRowsByCategory[featureCategory] && trimLevelRowsByCategory[featureCategory][trimLevel]) {
+                    value = trimLevelRowsByCategory[featureCategory][trimLevel][columnIndex];
+                } else {
+                    // Fallback to global trim level data
+                    value = trimLevelRows[trimLevel] ? trimLevelRows[trimLevel][columnIndex] : null;
+                }
+                
+                // Check if this trim level supports the feature
+                var cleanedValue = value ? value.trim().toLowerCase() : '';
+                if (cleanedValue === 'yes') {
+                    supportedTrimLevels.push(trimLevel);
+                }
+            });
+            
+            featureToTrimLevelsMap[modelKey][feature] = supportedTrimLevels;
+        });
+        
+        console.log('Populated feature-to-trim-levels mapping for ' + modelKey + ':', featureToTrimLevelsMap[modelKey]);
+    }
+
+    /**
+     * Populates the feature-to-trim-levels mapping for Sierra models (which have different data structure).
+     * @param {string} modelKey - Model key (e.g., 'SIERRA1500', 'SIERRA2500')
+     * @param {Object} featureToColumnMap - Maps features to CSV column indices
+     * @param {Object} featureToCategoryMap - Maps features to categories
+     * @param {Object} trimLevelRowsByCategory - Category-specific trim level data
+     * @param {Array} trimLevels - Array of trim level names
+     */
+    function populateFeatureTrimLevelsMapSierra(modelKey, featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels) {
+        if (!featureToTrimLevelsMap[modelKey]) {
+            featureToTrimLevelsMap[modelKey] = {};
+        }
+        
+        // Go through each feature and determine which trim levels support it
+        Object.keys(featureToColumnMap).forEach(function(feature) {
+            var columnIndex = featureToColumnMap[feature];
+            var featureCategory = featureToCategoryMap[feature];
+            var supportedTrimLevels = [];
+            
+            trimLevels.forEach(function(trimLevel) {
+                // Check if this trim level has this feature in this category
+                if (trimLevelRowsByCategory[featureCategory] && trimLevelRowsByCategory[featureCategory][trimLevel]) {
+                    var trimRow = trimLevelRowsByCategory[featureCategory][trimLevel];
+                    if (trimRow[columnIndex] && (trimRow[columnIndex].toUpperCase() === 'YES' || trimRow[columnIndex].toUpperCase() === 'Y')) {
+                        supportedTrimLevels.push(trimLevel);
+                    }
+                }
+            });
+            
+            featureToTrimLevelsMap[modelKey][feature] = supportedTrimLevels;
+        });
+        
+        console.log('Populated Sierra feature-to-trim-levels mapping for ' + modelKey + ':', featureToTrimLevelsMap[modelKey]);
+    }
+
+    /**
+     * Gets the trim levels that support a specific feature for a given model.
+     * @param {string} feature - Feature name
+     * @param {string} modelPrefix - Model prefix
+     * @returns {Array} - Array of trim levels that support this feature
+     */
+    function getFeatureTrimLevels(feature, modelPrefix) {
+        var modelKey = modelPrefix.toUpperCase();
+        if (featureToTrimLevelsMap[modelKey] && featureToTrimLevelsMap[modelKey][feature]) {
+            return featureToTrimLevelsMap[modelKey][feature];
+        }
+        return [];
+    }
+
     /**
      * Builds a single checkbox HTML element with proper styling and info icon.
      * @param {string} feature - Feature name
@@ -1807,9 +1903,16 @@ jQuery(document).ready(function($) {
         // Add feature info icon
         var infoIcon = '<span class="feature-info-icon ' + modelPrefix + '-info-icon" data-feature="' + feature + '" style="margin-left: 8px; cursor: pointer; color: #007cba; font-weight: bold; font-size: 16px; border: 1px solid #007cba; border-radius: 50%; width: 20px; height: 20px; display: inline-block; text-align: center; line-height: 18px; background-color: #f0f8ff;" title="Click for GMC ' + modelPrefix + ' feature description">ℹ</span>';
         
+        // Add trim levels underneath if provided
+        var trimLevelsText = '';
+        if (trimLevels && trimLevels.length > 0) {
+            var trimText = '(' + trimLevels.join(', ') + ')';
+            trimLevelsText = '<div style="text-align: center; font-size: 10px; color: #666; margin-top: 2px; line-height: 1;">' + trimText + '</div>';
+        }
+        
         var divEnd = '</div>';
         
-        return divStart + inputTag + labelTag + infoIcon + divEnd;
+        return divStart + inputTag + labelTag + infoIcon + trimLevelsText + divEnd;
     }
 
 	function populateTerrainFeatures() {
@@ -3558,6 +3661,9 @@ function populateCanyonFeatures() {
 		
 		// Store the results
 		trimLevelsData[model] = matchingTrimLevels;
+		
+		// Populate feature-to-trim-levels mapping for display
+		populateFeatureTrimLevelsMap('TERRAIN', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 	}
 
 
@@ -3790,6 +3896,9 @@ function populateCanyonFeatures() {
 		
 		// Store the results
 		trimLevelsData[model] = matchingTrimLevels;
+		
+		// Populate feature-to-trim-levels mapping for display
+		populateFeatureTrimLevelsMap('YUKON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 	}
 
 	function processCanyonTrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
@@ -3963,6 +4072,9 @@ function populateCanyonFeatures() {
 		
 		// Store the results
 		trimLevelsData[model] = matchingTrimLevels;
+		
+		// Populate feature-to-trim-levels mapping for display
+		populateFeatureTrimLevelsMap('CANYON', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 		
 		// Update the HTML block with trim level replacement (field 69)
 		var defaultText = 'Wonderful, it sounds like the {TRIM LEVELS} would be the best fit, which has all of these features and it is available! One moment while I plug this car in.';
@@ -4229,6 +4341,9 @@ function populateCanyonFeatures() {
 		
 		// Store the results
 		trimLevelsData[model] = matchingTrimLevels;
+		
+		// Populate feature-to-trim-levels mapping for display
+		populateFeatureTrimLevelsMap('ACADIA', featureToColumnMap, featureToCategoryMap, trimLevelRows, trimLevelRowsByCategory, trimLevels);
 	}
 
 	function processSierra1500TrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
@@ -4370,6 +4485,9 @@ function populateCanyonFeatures() {
 		} else {
 			console.warn('❌ HTML block (ID: 69) not found for Sierra 1500');
 		}
+		
+		// Populate feature-to-trim-levels mapping for display
+		populateFeatureTrimLevelsMapSierra('SIERRA1500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
 	}
 
 	function processSierra2500TrimLevels(csvData, selectedFeatures, htmlBlock, trimLevelsButtonBlock, model) {
@@ -4510,6 +4628,9 @@ function populateCanyonFeatures() {
 		} else {
 			console.warn('❌ HTML block (ID: 69) not found for Sierra 2500');
 		}
+		
+		// Populate feature-to-trim-levels mapping for display
+		populateFeatureTrimLevelsMapSierra('SIERRA2500', featureToColumnMap, featureToCategoryMap, trimLevelRowsByCategory, trimLevels);
 	}
 
 	function updateTrimLevels(model) {
